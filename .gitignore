@@ -123,6 +123,7 @@ celerybeat.pid
 
 # Skip data
 data/
+db/
 
 # Environments
 .env
