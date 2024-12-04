@@ -1,29 +1,14 @@
 import os
-import sys
+import time
 import pandas as pd
-
-sys.path.append('..')
-
 from tqdm import tqdm
-
-from unstructured.staging.base import elements_from_json
-from langchain_core.documents import Document
+from openai import OpenAI
 from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.llms import Ollama
-from langchain.prompts import PromptTemplate
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.runnables import RunnablePassthrough
 from sentence_transformers import SentenceTransformer, util
 
-os.environ["OPENAI_API_KEY"] = "sk-or-vv-5b09823d83c2c4452cf48f669396b65a77e3fcb1f19f9090a98be38b124622f6"
-os.environ["OPENAI_API_BASE"] = "https://api.vsegpt.ru/v1/"
-
-import pandas as pd
-
 from src.utils.paths import get_project_path
-from openai import OpenAI
-import time
+from src.utils.config import settings
 
 
 def load_vector_db(load_path=os.path.join(get_project_path(), "db", "db_BAAI_bge-m3")):
@@ -41,7 +26,7 @@ def get_rag_response(ques, retriever):
     retrieved_docs = retriever.get_relevant_documents(ques)
     context = "\n\n".join(doc.page_content for doc in retrieved_docs)
 
-    llm = OpenAI(base_url=os.environ["OPENAI_API_BASE"])
+    llm = OpenAI(base_url=settings.OPENAI_API_BASE)
 
     response_big = llm.chat.completions.create(
         model="openai/gpt-4o-mini",
