@@ -1,22 +1,26 @@
-import streamlit as st
+import gradio as gr
 from chatbot import ChatBot
 
-def main():
-    st.set_page_config(page_title="RAG ChatBot", page_icon="🤖", layout="wide")
-    chatbot = ChatBot()
+chatbot_instance = ChatBot()
 
-    st.title("🤖 Добро пожаловать в ChatBot!")
-    st.write(f"Привет! Это чат-бот на основе RAG. В базе данных 301 документов. Задайте вопрос!")
+def chat(user_input, history):
+    try:
+        response = chatbot_instance.generate_response(user_input)
+        history.append((user_input, response))
+        return "", history
+    except Exception as e:
+        error_message = f"Ошибка: {str(e)}"
+        history.append((user_input, error_message))
+        return "", history
 
-    user_input = st.text_input("Введите ваш вопрос здесь:")
+with gr.Blocks() as demo:
+    gr.Markdown("# 🤖 Добро пожаловать в ChatBot!")
+    gr.Markdown("Привет! Это чат-бот на основе RAG. В базе данных 301 документ. Задайте вопрос!")
 
-    if user_input:
-        with st.spinner("Генерация ответа..."):
-            try:
-                response = chatbot.generate_response(user_input)
-                st.write(response)
-            except Exception as e:
-                st.error(str(e))
+    chatbot_widget = gr.Chatbot()
+    message_input = gr.Textbox(placeholder="Введите ваш вопрос здесь...")
+    submit_button = gr.Button("Отправить")
 
-if __name__ == "__main__":
-    main()
+    submit_button.click(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])
+
+demo.launch(server_port=8517, server_name="0.0.0.0", share=True)
