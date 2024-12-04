@@ -13,6 +13,10 @@ class Settings(BaseSettings):
     
     OPENAI_API_KEY: str = Field(..., env="OPENAI_API_KEY")
     OPENAI_API_BASE: str = Field(..., env="OPENAI_API_BASE")
+    # S3_ACCESS_KEY: str = Field(..., env="S3_ACCESS_KEY")
+    # S3_SECRET_KEY: str = Field(..., env="S3_SECRET_KEY")
+    # S3_URL: str = Field(..., env="S3_URL")
+    # FAISS_BUCKET: str = Field(..., env="FAISS_BUCKET")
 
 
 load_dotenv()

@@ -27,3 +27,13 @@ def download_file_from_s3(s3_uri: str, path_to_local_storage: str):
     """
     s3 = create_s3_session()
     s3.download_file(settings.S3_BUCKET, s3_uri, path_to_local_storage)
+    
+    
+def download_file_from_s3(bucket_name, key):
+    """
+    Загружает файл из S3 и возвращает его содержимое.
+    """
+    s3 = create_s3_session()
+    obj = s3.get_object(Bucket=bucket_name, Key=key)
+    data = obj['Body'].read()
+    return data
