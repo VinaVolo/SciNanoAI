@@ -1,14 +1,11 @@
 import os
-import sys
-sys.path.append('..')
 import streamlit as st
 from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from openai import OpenAI
 from src.utils.paths import get_project_path
+from src.utils.config import settings
 
-os.environ["OPENAI_API_KEY"] = "сюда"
-os.environ["OPENAI_API_BASE"] = "сюда"
 
 @st.cache_resource()
 def load_vector_database(path=os.path.join(get_project_path(), "db", "db_BAAI_bge-m3")):
@@ -36,7 +33,7 @@ def get_rag_response(question, retriever):
     relevant_documents = retriever.get_relevant_documents(question)
     context = "\n\n".join(doc.page_content for doc in relevant_documents)
 
-    openai_client = OpenAI(base_url=os.environ["OPENAI_API_BASE"])
+    openai_client = OpenAI(base_url=settings.OPENAI_API_BASE)
 
     response = openai_client.chat.completions.create(
         model="openai/gpt-4o-mini",

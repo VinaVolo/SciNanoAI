@@ -10,11 +10,9 @@ class Settings(BaseSettings):
     """
 
     PROJECT_DIR_PATH: DirectoryPath = Field(get_project_path(), env="PROJECT_DIR_PATH")
-
-    S3_URL: AnyHttpUrl = Field("https://storage.yandexcloud.net", env="S3_URL")
-    S3_BUCKET: str = Field("paper-storage", env="S3_BUCKET")
-    S3_ACCESS_KEY: str = Field(..., env="S3_ACCESS_KEY")
-    S3_SECRET_KEY: str = Field(..., env="S3_SECRET_KEY")
+    
+    OPENAI_API_KEY: str = Field(..., env="OPENAI_API_KEY")
+    OPENAI_API_BASE: str = Field(..., env="OPENAI_API_BASE")
 
 
 load_dotenv()
