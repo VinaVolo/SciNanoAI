@@ -1,3 +1,4 @@
+import os
 import gradio as gr
 from chatbot import ChatBot
 
@@ -12,6 +13,10 @@ def chat(user_input, history):
         error_message = f"Ошибка: {str(e)}"
         history.append((user_input, error_message))
         return "", history
+    
+def clear_chat():
+    chatbot_instance.conversation_history = []
+    return []
 
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Добро пожаловать в ChatBot!")
@@ -20,7 +25,15 @@ with gr.Blocks() as demo:
     chatbot_widget = gr.Chatbot()
     message_input = gr.Textbox(placeholder="Введите ваш вопрос здесь...")
     submit_button = gr.Button("Отправить")
+    clear_button = gr.Button("Очистить чат")
 
-    submit_button.click(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])
+    # Связываем кнопки с функциями
+    message_input.submit(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])  # Нажатие Enter
+    submit_button.click(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])  # Кнопка отправки
+    clear_button.click(clear_chat, outputs=[chatbot_widget])
 
-demo.launch(server_port=8517, server_name="0.0.0.0", share=True)
+demo.launch(auth = (os.environ["username"], os.environ["password"]),
+            auth_message="Enter your username and password",
+            server_port=8517,
+            server_name="0.0.0.0",
+            root_path="/scinanoai")

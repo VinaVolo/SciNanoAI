@@ -15,11 +15,9 @@ class ConductorAgent:
             scores = [1 - score for score in scores]
             labels[0] = "Влияние наноструктурированной поверхности на поведение клеток"
             labels[1] = "Другая тема"
-        print(scores)
-        print(labels)
+
         # Предполагаем, что первый вариант в labels — это наиболее подходящая тема
         if labels[0] == self.topics[0] and scores[0] >= self.threshold:
-            print("Тема разговора о бд")
             return True
         else:
             return False

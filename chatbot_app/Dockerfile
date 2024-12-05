@@ -10,4 +10,4 @@ COPY . .
 
 EXPOSE 8517
 
-CMD ["streamlit", "run", "app.py", "--server.port=8517", "--server.address=0.0.0.0", "--server.enableCORS=false", "--server.enableXsrfProtection=false", "--browser.gatherUsageStats=false"]
+CMD ["python", "app.py"]

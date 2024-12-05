@@ -40,7 +40,6 @@ class ChatBot:
             self.conversation_history = [summary_message] + recent_messages
             
         if self.conductor_agent.should_use_database(question):
-            print("Условие для использования базы данных выполнено")
             documents = self.get_relevant_documents(question)
             context = "\n\n".join(doc['content'] for doc in documents)
             prompt = (
@@ -80,8 +79,6 @@ class ChatBot:
         """
         # Формируем текст для суммирования
         conversation = ""
-        print(messages)
-        print("Начало суммирования")
         for message in messages:
             role = "Пользователь" if message['role'] == 'user' else "Ассистент"
             conversation += f"{role}: {message['content']}\n"
@@ -91,9 +88,7 @@ class ChatBot:
             "Отвечайте на русском языке.\n\n" + conversation
         )
         
-        messages = {"role": "user", "content": prompt}
-        
-        print(messages)
+        messages = [{"role": "user", "content": prompt}]
         
         openai_client = OpenAI(base_url=self.openai_api_base)
 
@@ -103,9 +98,7 @@ class ChatBot:
             max_tokens=4096,
             temperature=0.2,
         )
-        print("-------------------------------------------------------------------------------------------")
         summary = response.choices[0].message.content.strip()
-        print(summary)
         return summary
     
     def count_tokens(self, messages):
