@@ -2,16 +2,17 @@ import os
 import tiktoken
 import requests
 from openai import OpenAI
-from conductor_agent import ConductorAgent
+from chatbot_app.conductor_agent import ConductorAgent
 
 class ChatBot:
-    def __init__(self):
+    def __init__(self, llm_model="openai/gpt-4o-mini"):
+        self.llm_model=llm_model
         self.openai_api_key = os.environ["OPENAI_API_KEY"]
         self.openai_api_base = os.environ["OPENAI_API_BASE"]
         self.conductor_agent = ConductorAgent(threshold=0.2)
         self.conversation_history = []
 
-    def get_relevant_documents(self, query, k=5):
+    def get_relevant_documents(self, query, k=10):
         url = "http://localhost:8000/query"
         payload = {"query": query, "k": k}
         response = requests.post(url, json=payload)
@@ -40,14 +41,40 @@ class ChatBot:
             self.conversation_history = [summary_message] + recent_messages
             
         if self.conductor_agent.should_use_database(question):
+            # documents = self.get_relevant_documents(question)
+            # context = "\n\n".join(doc['content'] for doc in documents)
+            # prompt = (
+            #     f"У вас есть следующая контекстная информация: {context} "
+            #     f"Используя эту информацию, ответьте на следующий вопрос ясно, подробно и профессионально: "
+            #     f"Вопрос: {question} Если информации в контексте недостаточно, признайте это честно "
+            #     "и предложите логичный следующий шаг. Отвечайте на русском языке. Если для какого-то слова на русском нет аналога, то пиши это словно на английском"
+            #     "Кроме того, если видишь специфичную терминологию с припиской нано, то оставляй ее на английском. Например: слово nanopillars -- его переводить нельзя"
+            # )
+
             documents = self.get_relevant_documents(question)
-            context = "\n\n".join(doc['content'] for doc in documents)
+            context_parts = []
+            for doc in documents:
+                content = doc.get("content", "")
+                metadata = doc.get("metadata", {})
+                filename = metadata.get("filename", "неизвестный_файл")
+                context_parts.append(f"{content} [{filename}]")
+
+            context = "\n\n".join(context_parts)
+            
             prompt = (
-                f"У вас есть следующая контекстная информация: {context} "
-                f"Используя эту информацию, ответьте на следующий вопрос ясно, подробно и профессионально: "
-                f"Вопрос: {question} Если информации в контексте недостаточно, признайте это честно "
-                "и предложите логичный следующий шаг. Отвечайте на русском языке."
+                f"У вас есть следующая контекстная информация:\n\n"
+                f"{context}\n\n"
+                "Используя эту информацию, ответьте на следующий вопрос ясно, подробно и профессионально:\n\n"
+                f"Вопрос: {question}\n\n"
+                "Если информации в контексте недостаточно, признайте это честно и предложите логичный следующий шаг. "
+                "Отвечайте на русском языке. Если для какого-то слова на русском нет аналога, то пишите это слово на английском. "
+                "Кроме того, если видите специфичную терминологию с припиской нано, то оставляйте её на английском (например: nanopillars). "
+                "\n\n"
+                "Внимание: если используете информацию из конкретного фрагмента, приведите ссылку на название файла в квадратных скобках, "
+                "как показано в контексте."
             )
+
+
         else:
             prompt = (
                 f"Ответьте на следующий вопрос ясно, подробно и профессионально: "
@@ -58,20 +85,21 @@ class ChatBot:
         messages.append({"role": "user", "content": prompt})
         
         messages = self.limit_tokens(messages, max_tokens=max_allowed_tokens)
-            
+           
         openai_client = OpenAI(base_url=self.openai_api_base)
 
         response = openai_client.chat.completions.create(
-            model="openai/gpt-4o-mini",
+            model=self.llm_model,
             messages=messages,
-            temperature=0.2,
+            temperature=0,
             max_tokens=4096,
         )
         
         reply = response.choices[0].message.content.strip()
         self.conversation_history.append({"role": "assistant", "content": reply})
-        
-        return reply
+
+        return reply        
+
 
     def summarize_messages(self, messages):
         """
