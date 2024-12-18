@@ -5,7 +5,7 @@ from openai import OpenAI
 from chatbot_app.conductor_agent import ConductorAgent
 
 class ChatBot:
-    def __init__(self, llm_model="openai/gpt-4o-mini"):
+    def __init__(self, llm_model="openai/gpt-4o-2024-11-20"):
         self.llm_model=llm_model
         self.openai_api_key = os.environ["OPENAI_API_KEY"]
         self.openai_api_base = os.environ["OPENAI_API_BASE"]

@@ -15,7 +15,7 @@ class VectorDatabase:
             allow_dangerous_deserialization=True
         )
 
-    def query(self, query_text, k=20):
+    def query(self, query_text, k=10):
         retriever = self.vector_store.as_retriever(
             search_type="similarity",
             search_kwargs={"k": k}

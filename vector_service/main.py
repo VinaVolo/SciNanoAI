@@ -8,8 +8,8 @@ app = FastAPI()
 
 # Инициализация векторной базы данных при запуске сервиса
 vector_db = VectorDatabase(
-    db_path=os.path.join("db", "db_BAAI_bge-m3"),
-    model_name='BAAI/bge-m3'
+    db_path=os.path.join("db", "intfloat_multilingual-e5-large"),
+    model_name='intfloat/multilingual-e5-large'
 )
 
 @app.post("/query", response_model=QueryResponse)
