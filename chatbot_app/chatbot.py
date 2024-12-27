@@ -2,8 +2,9 @@ import os
 import json
 import tiktoken
 import requests
+import pandas as pd
 from openai import OpenAI
-from chatbot_app.conductor_agent import ConductorAgent
+from chatbot_app.decomposer_agent import DecomposerAgent
 from langchain_community.chat_models.gigachat import GigaChat
 from langchain_community.chat_models.yandex import ChatYandexGPT
 
@@ -16,23 +17,26 @@ class ChatBot:
         self.yandex_api_key = os.environ["YANDEX_API_KEY"]
         self.yandex_api_base = os.environ["YANDEX_API_BASE"]
         self.sber_api_key = os.environ['SBER_API_KEY']
-        self.conductor_agent = ConductorAgent(threshold=0.2)
+
+        self.decomposer_agent = DecomposerAgent(threshold=0.2)
         self.conversation_history = []
 
     def get_relevant_documents(self, query, k=10, lambda_mult=0.45, fetch_k=50):
-        # url = "http://localhost:8000/query"
-        # payload = {"query": query, "k": k}
-        # response = requests.post(url, json=payload)
-        # print(response)
-        # if response.status_code == 200:
-        #     return response.json().get('documents', [])
-        # else:
-        #     raise Exception(f"Ошибка при запросе к векторной базе данных: {response.text}")
-        doce = self.data_base.query(query)
 
-        return [{"content":doc.page_content, "metadata":doc.metadata} for doc in doce]
+        url = "http://localhost:8000/query"
+        payload = {"query": query, "k": k, "lambda_mult": lambda_mult, "fetch_k": fetch_k}
+        response = requests.post(url, json=payload)
+        print(response)
+        if response.status_code == 200:
+            return response.json().get('documents', [])
+        else:
+            raise Exception(f"Ошибка при запросе к векторной базе данных: {response.text}")
+
+        # doce = self.data_base.query(query)
+        # return [{"content":doc.page_content, "metadata":doc.metadata} for doc in doce]
 
     def generate_response(self, question):
+
         self.conversation_history.append({"role": "user", "content": question})
 
         total_tokens = self.count_tokens(self.conversation_history)
@@ -44,13 +48,11 @@ class ChatBot:
             N = 4
             messages_to_summarize = self.conversation_history[:-N]
             recent_messages = self.conversation_history[-N:]
-
             summary = self.summarize_messages(messages_to_summarize)
-
             summary_message = {"role": "system", "content": f"Резюме предыдущего разговора: {summary}"}
             self.conversation_history = [summary_message] + recent_messages
 
-        if self.conductor_agent.should_use_database(question):
+        if self.decomposer_agent.should_use_database(question):
             documents = self.get_relevant_documents(question)
             context_parts = []
             for doc in documents:
@@ -72,7 +74,8 @@ class ChatBot:
                 "Если информации из контекста недостаточно, честно признайте это, но постарайтесь предложить логичные следующие шаги для решения вопроса. "
                 "Используйте русский язык, а для специфической терминологии, особенно с приставкой 'нано', оставляйте английские термины (например, nanopillars)."
                 "\n\n"
-                "При использовании данных из контекста обязательно приводите ссылки на название файла в квадратных скобках, как это указано в предоставленной информации."
+                "При использовании данных из контекста обязательно приводите ссылки в квадратных скобках. Ссылки должны быть оформлены в соответствии с предоставленной информацией: либо это название файла в квадратных скобках, либо ссылка, оформленная по ГОСТ, также в квадратных скобках."
+                "Используйте только те ссылки, которые явно указаны в контексте."
             )
 
         else:
@@ -103,8 +106,7 @@ class ChatBot:
                     temperature=0.2,
                     max_tokens=4096,
                     model="GigaChat-lite"
-                )
-            
+                )   
             reply = llm_gigachat.invoke(prompt).content
 
         else:
@@ -125,10 +127,8 @@ class ChatBot:
 
         self.conversation_history.append({"role": "assistant", "content": reply})
 
-
         if self.judge_answer(reply, question) == "нет." or self.judge_answer(reply, question) == "нет":
             return self.handle_incomplete_answer(question)
-        print("skip judge")
         
         return reply
 

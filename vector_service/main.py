@@ -3,10 +3,8 @@ from fastapi import FastAPI
 from vector_db import VectorDatabase
 from models import QueryRequest, QueryResponse, Document
 
-
 app = FastAPI()
 
-# Инициализация векторной базы данных при запуске сервиса
 vector_db = VectorDatabase(
     db_path=os.path.join("db", "intfloat_multilingual-e5-large"),
     model_name='intfloat/multilingual-e5-large'
@@ -14,7 +12,7 @@ vector_db = VectorDatabase(
 
 @app.post("/query", response_model=QueryResponse)
 def query_vector_db(request: QueryRequest):
-    documents = vector_db.query(request.query, request.k)
+    documents = vector_db.query(request.query, request.k, request.lambda_mult, request.fetch_k)
     response_documents = [
         Document(content=doc.page_content, metadata=doc.metadata) for doc in documents
     ]

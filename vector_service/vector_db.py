@@ -1,7 +1,6 @@
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 
-
 class VectorDatabase:
     def __init__(self, db_path, model_name):
         self.db_path = db_path
