@@ -2,6 +2,12 @@ from transformers import pipeline
 
 class DecomposerAgent:
     def __init__(self, threshold=0.2):
+        """
+        Initialize the DecomposerAgent.
+
+        Args:
+            threshold (float): The threshold above which the topic is considered relevant. Defaults to 0.2.
+        """
         self.threshold = threshold
         self.classifier = pipeline('zero-shot-classification', model='BAAI/bge-reranker-large')
         self.topics = [
@@ -14,6 +20,15 @@ class DecomposerAgent:
         ]
 
     def should_use_database(self, question):
+        """
+        Check if the question should be answered from the database.
+
+        Args:
+            question (str): The question to be answered.
+
+        Returns:
+            bool: True if the question should be answered from the database, False otherwise.
+        """
         result = self.classifier(question, self.topics)
         top_label = result['labels'][0]
         top_score = result['scores'][0]
