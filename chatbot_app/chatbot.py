@@ -4,13 +4,12 @@ import tiktoken
 import requests
 import pandas as pd
 from openai import OpenAI
-from chatbot_app.decomposer_agent import DecomposerAgent
+from decomposer_agent import DecomposerAgent
 from langchain_community.chat_models.gigachat import GigaChat
 from langchain_community.chat_models.yandex import ChatYandexGPT
 
 class ChatBot:
-    def __init__(self, llm_model, data_base):
-        self.data_base = data_base
+    def __init__(self, llm_model):
         self.llm_model = llm_model
         self.openai_api_key = os.environ["OPENAI_API_KEY"]
         self.openai_api_base = os.environ["OPENAI_API_BASE"]

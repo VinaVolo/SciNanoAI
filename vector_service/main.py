@@ -6,7 +6,8 @@ from models import QueryRequest, QueryResponse, Document
 app = FastAPI()
 
 vector_db = VectorDatabase(
-    db_path=os.path.join("db", "intfloat_multilingual-e5-large"),
+    db_path="/home/vinavolo/Documents/SciNanoAI/db/intfloat_multilingual-e5-large",
+    #os.path.join("db", "intfloat_multilingual-e5-large"),
     model_name='intfloat/multilingual-e5-large'
 )
 

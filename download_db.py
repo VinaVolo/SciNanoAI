@@ -19,7 +19,7 @@ def download_all_files_from_s3_bucket():
     
     bucket = s3.Bucket("scinanoai-faiss-db")
     
-    for obj in bucket.objects.filter(Prefix="data/"):
+    for obj in bucket.objects.filter(Prefix="db/"):
         if obj.key.endswith('/'):
             print(f"Skipping directory placeholder: {obj.key}")
             continue
