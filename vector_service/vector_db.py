@@ -15,14 +15,11 @@ class VectorDatabase:
             allow_dangerous_deserialization=True
         )
 
-    def query(self, query_text, k=10):
+    def query(self, query_text, k=5, lambda_mult=0.45, fetch_k=50):
         retriever = self.vector_store.as_retriever(
-            search_type="similarity",
-            search_kwargs={"k": k}
-
-            # search_type="mmr"
-
-            
+            search_type="mmr",
+            search_kwargs={'k': k, 'lambda_mult': lambda_mult, "fetch_k":fetch_k}
         )
+
         relevant_documents = retriever.get_relevant_documents(query_text)
         return relevant_documents

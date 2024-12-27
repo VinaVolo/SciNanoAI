@@ -1,4 +1,7 @@
 OPENAI_API_KEY=
 OPENAI_API_BASE=
+YANDEX_API_KEY=
+YANDEX_API_BASE=gpt://<идентификатор_каталога>/yandexgpt-32k/latest
+SBER_API_KEY=
 username=
 password=
