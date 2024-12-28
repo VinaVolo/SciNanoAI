@@ -28,7 +28,7 @@ git clone git@github.com:VinaVolo/SciNanoAI.git
 
 <p>3. Download data and vectore store from S3 bucket</p>
 	
-- Create a file .env according to the following template and in the article access keys
+- Create a file .env according to the following template and insert the access keys
   ```bash
 	S3_ACCESS_KEY=
 	S3_SECRET_KEY=
@@ -41,12 +41,12 @@ git clone git@github.com:VinaVolo/SciNanoAI.git
 	password=
   ```
 
-- To download data from S3 banquet, run
+- To download data from S3 bucket, run
   ```bash
 	python download_data.py
   ```
   
-- To download vector store from S3 banquet, run
+- To download vector store from S3 bucket, run
   ```bash
 	python download_db.py
   ```
