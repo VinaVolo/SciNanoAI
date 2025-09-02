@@ -32,7 +32,7 @@ def chat_endpoint(request: ChatRequest):
         conversation_history = chatbot_instance.conversation_history
         return ChatResponse(reply=response_message, conversation_history=conversation_history)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Ошибка: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/clear_history")
 def clear_history():
@@ -40,7 +40,7 @@ def clear_history():
     Clears the chat history.
 
     Returns:
-        dict: {'message': 'История очищена'}
+        dict: {'message': 'History cleared'}
     """
     chatbot_instance.conversation_history = []
-    return {"message": "История очищена"}
+    return {"message": "History cleared"}

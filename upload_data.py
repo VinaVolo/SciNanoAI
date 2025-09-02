@@ -41,10 +41,8 @@ def upload_folder_to_s3(folder_path, bucket_name, s3_prefix=""):
                 else:
                     print(f"Error checking {s3_key}: {e}")
 
-# Параметры
-folder_path = "./data/Статьи для базы данных"
+folder_path = "./data/Articles for the database"
 bucket_name = "scinanoai-faiss-db"
-s3_prefix = "data/Статьи для базы данных"
+s3_prefix = "data/Articles for the database"
 
-# Вызов функции
 upload_folder_to_s3(folder_path, bucket_name, s3_prefix)
