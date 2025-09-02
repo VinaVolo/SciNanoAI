@@ -8,7 +8,7 @@
 <p>1. Clone the repo:
 
 ```bash
-git clone git@github.com:VinaVolo/SciNanoAI.git
+git clone git@github.com:infochemistry-ai/SciNanoAI.git
 ```
 <p>2. Create a virtual environment and install the necessary libraries </p>
 
