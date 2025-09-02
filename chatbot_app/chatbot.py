@@ -10,6 +10,22 @@ from langchain_community.chat_models.yandex import ChatYandexGPT
 
 class ChatBot:
     def __init__(self, llm_model):
+        """
+        Initialize the chatbot instance.
+
+        Args:
+            llm_model (str): The name of the language model to use.
+
+        Sets the following instance variables:
+            llm_model (str): The name of the language model to use.
+            openai_api_key (str): The OpenAI API key.
+            openai_api_base (str): The OpenAI API base URL.
+            yandex_api_key (str): The Yandex API key.
+            yandex_api_base (str): The Yandex API base URL.
+            sber_api_key (str): The Sberbank API key.
+            decomposer_agent (DecomposerAgent): The decomposer agent instance.
+            conversation_history (list): The conversation history.
+        """
         self.llm_model = llm_model
         self.openai_api_key = os.environ["OPENAI_API_KEY"]
         self.openai_api_base = os.environ["OPENAI_API_BASE"]
@@ -41,7 +57,7 @@ class ChatBot:
         if response.status_code == 200:
             return response.json().get('documents', [])
         else:
-            raise Exception(f"Ошибка при запросе к векторной базе данных: {response.text}")
+            raise Exception(f"Error when querying the vector database: {response.text}")
 
     def generate_response(self, question):
         """
@@ -76,7 +92,7 @@ class ChatBot:
             messages_to_summarize = self.conversation_history[:-N]
             recent_messages = self.conversation_history[-N:]
             summary = self.summarize_messages(messages_to_summarize)
-            summary_message = {"role": "system", "content": f"Резюме предыдущего разговора: {summary}"}
+            summary_message = {"role": "system", "content": f"Summary of the previous conversation: {summary}"}
             self.conversation_history = [summary_message] + recent_messages
 
         if self.decomposer_agent.should_use_database(question):
@@ -85,30 +101,28 @@ class ChatBot:
             for doc in documents:
                 content = doc.get("content", {})
                 metadata = doc.get("metadata", {})
-                filename = metadata.get("filename", "неизвестный_файл")
+                filename = metadata.get("filename", "unknown_file")
                 context_parts.append(f"{content} [{filename}]")
 
             context = "\n\n".join(context_parts)
 
             prompt = (
-                f"Вам предоставлена следующая контекстная информация:\n\n"
+                f"You have been provided with the following contextual information:\n\n"
                 f"{context}\n\n"
-                "На основании этой информации дайте ясный, связный и профессиональный ответ на следующий вопрос:\n\n"
-                f"Вопрос: {question}\n\n"
-                "Ваш ответ должен быть написан в свободной, но профессиональной форме с использованием всех технических деталей, представленных в контексте. Избегайте использования структурирования текста в виде списков или подзаголовков, "
-                "кроме тех случаев, когда это необходимо для пояснения сложных технических деталей. Сосредоточьтесь на создании общего текста, "
-                "в котором раскрываются ключевые технические аспекты"
-                "Если информации из контекста недостаточно, честно признайте это, но постарайтесь предложить логичные следующие шаги для решения вопроса. "
-                "Используйте русский язык, а для специфической терминологии, особенно с приставкой 'нано', оставляйте английские термины (например, nanopillars)."
-                "\n\n"
-                "При использовании данных из контекста обязательно приводите ссылки в квадратных скобках. Ссылки должны быть оформлены в соответствии с предоставленной информацией: либо это название файла в квадратных скобках, либо ссылка, оформленная по ГОСТ, также в квадратных скобках."
-                "Используйте только те ссылки, которые явно указаны в контексте."
+                "Based on this information, give a clear, coherent, and professional answer to the following question:\n\n"
+                f"Question: {question}\n\n"
+                "Your answer should be written in a free yet professional style, using all the technical details provided in the context. Avoid structuring the "
+                "text as lists or subheadings, except when necessary to clarify complex technical details. Focus on creating a continuous text that highlights the key technical aspects"
+                " If there is insufficient information in the context, honestly acknowledge this, but try to suggest logical next stepsto resolve the issue"
+                "Use Russian; for specific terminology-especially with the prefix ”nano”-keep the English terms (for example, nanopil- lars)."
+                "When using data from the context, be sure to include references in square brackets. Links should be formatted according to the infor- mation provided: either the file name is placed in square brackets, or the link, formatted according to GOST R 7.0.108–2022, is also given in square brackets."
+                "Use only those links that are explicitly specified in the context."
             )
 
         else:
             prompt = (
-                f"Ответьте на следующий вопрос ясно, подробно и профессионально: "
-                f"Вопрос: {question} Отвечайте на русском языке."
+                f"Answer the following question clearly, in detail, and professionally.:"
+                f"Question: {question} Please respond in Russian."
             )
 
         messages = self.conversation_history.copy()
@@ -162,14 +176,24 @@ class ChatBot:
 
     def judge_answer(self, answer, question):
         """
-        Оценивает, удовлетворяет ли ответ условиям полноты и релевантности.
+        Evaluates the given answer to the given question.
+
+        The evaluation is done by creating a prompt that asks a language model to judge the answer.
+        The prompt provides the question and the answer and asks the model to respond with 'Да' if the answer is complete, accurate, and relevant and 'Нет' if the answer is incomplete or inaccurate.
+
+        Args:
+            answer (str): The answer to be evaluated.
+            question (str): The question that the answer is supposed to answer.
+
+        Returns:
+            str: The verdict of the language model, either 'Да' or 'Нет'.
         """
         prompt = (
-            f"Оцени следующий ответ на соответствие заданному вопросу. Ответ должен быть полным, точным и релевантным:\n\n"
-            f"Вопрос: {question}\n\n"
-            f"Ответ: {answer}\n\n"
-            "Если в ответе указывается, что информация недостаточна или вопрос остаётся открытым или что контекст не содержит ответ на вопрос, ответь 'Нет'. "
-            "Если ответ полностью удовлетворяет критериям точности, полноты и релевантности, ответь 'Да'."
+            f"Evaluate whether the following answer complies with the given question. The answer must be complete, accurate, and relevant:\n\n"
+            f"Question: {question}\n\n"
+            f"Answer: {answer}\n\n"
+            "If the answer indicates that the information is insufficient, the question remains open, or the context does not contain an answer, answer 'No' "
+            "If the answer fully meets the criteria of accuracy, completeness, and relevance, answer 'Yes' "
         )
 
         openai_client = OpenAI(base_url=self.openai_api_base)
@@ -185,12 +209,22 @@ class ChatBot:
 
     def handle_incomplete_answer(self, question):
         """
-        Переформулирует или декомпозирует вопрос и выполняет повторный запрос.
+        Handles incomplete answers by reformulating the question.
+
+        When the answer is evaluated as incomplete, this method is called to generate a new question.
+        The new question is created by asking a language model to reformulate the original question.
+        The reformulated question is then passed to the generate_response method to generate a new answer.
+
+        Args:
+            question (str): The original question that received an incomplete answer.
+
+        Returns:
+            str: The answer to the reformulated question.
         """
         prompt = (
-            f"Ответ на следующий вопрос оказался недостаточным. Переформулируй его с сохранением смысла:\n\n"
-            f"Вопрос: {question}\n\n"
-            "Предложите новый вариант вопроса"
+            f"The answer to the following question was insufficient. Reformulate it while preserving its original meaning::\n\n"
+            f"Question: {question}\n\n"
+            "Suggest a revised version of the question."
         )
 
         openai_client = OpenAI(base_url=self.openai_api_base)
@@ -206,16 +240,29 @@ class ChatBot:
 
     def summarize_messages(self, messages):
         """
-        Суммирует список сообщений с помощью OpenAI API.
+        Summarizes a conversation between a user and the chatbot.
+
+        This method takes a list of messages as input, where each message is a dictionary containing the role of the sender (user or assistant) and the content of the message.
+        The method returns a string that summarizes the conversation, preserving important details.
+
+        The summary is generated by asking a language model to summarize the conversation.
+        The language model is provided with a prompt that includes the conversation and the instruction to summarize it.
+        The summary is then extracted from the language model's response.
+
+        Args:
+            messages (list): A list of dictionaries, where each dictionary contains the role of the sender (user or assistant) and the content of the message.
+
+        Returns:
+            str: A string that summarizes the conversation, preserving important details.
         """
         conversation = ""
         for message in messages:
-            role = "Пользователь" if message['role'] == 'user' else "Ассистент"
+            role = "User" if message['role'] == 'user' else "Assistant"
             conversation += f"{role}: {message['content']}\n"
 
         prompt = (
-            "Кратко суммируйте следующий диалог между пользователем и ассистентом, сохраняя важные детали. "
-            "Отвечайте на русском языке.\n\n" + conversation
+            "Briefly summarize the following dialogue between the user and the assistant, preserving the important details. "
+            "Please respond in Russian..\n\n" + conversation
         )
 
         messages = [{"role": "user", "content": prompt}]

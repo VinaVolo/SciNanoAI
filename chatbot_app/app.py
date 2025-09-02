@@ -24,18 +24,17 @@ def chat(user_input, history):
     """
 
     try:
-        # Отправляем запрос в чат API
         response = requests.post(f"{CHAT_API_URL}/chat", json={"message": user_input})
         if response.status_code == 200:
             data = response.json()
             reply = data['reply']
             history.append((user_input, reply))
         else:
-            error_message = f"Ошибка в чат-боте: {response.text}"
+            error_message = f"Error in the chatbot: {response.text}"
             history.append((user_input, error_message))
         return "", history
     except Exception as e:
-        error_message = f"Ошибка соединения с чат-ботом: {str(e)}"
+        error_message = f"Error connecting to the chatbot: {str(e)}"
         history.append((user_input, error_message))
         return "", history
 
@@ -53,20 +52,20 @@ def clear_chat():
         if response.status_code == 200:
             return []
         else:
-            error_message = f"Ошибка API при очистке: {response.text}"
+            error_message = f"API error during cleaning: {response.text}"
             return [(None, error_message)]
     except Exception as e:
-        error_message = f"Ошибка соединения с чат-ботом: {str(e)}"
+        error_message = f"Error connecting to the chatbot: {str(e)}"
         return [(None, error_message)]
 
 with gr.Blocks() as demo:
-    gr.Markdown("# 🤖 Добро пожаловать в ChatBot!")
-    gr.Markdown("Привет! Это чат-бот на основе RAG. В базе данных 301 документ. Задайте вопрос!")
+    gr.Markdown("# 🤖 Welcome to ChatBot!")
+    gr.Markdown("Hi! This is a RAG-based chatbot. There are 301 documents in the database. Ask a question!")
 
     chatbot_widget = gr.Chatbot()
-    message_input = gr.Textbox(placeholder="Введите ваш вопрос здесь...")
-    submit_button = gr.Button("Отправить")
-    clear_button = gr.Button("Очистить чат")
+    message_input = gr.Textbox(placeholder="Enter your question here...")
+    submit_button = gr.Button("Send")
+    clear_button = gr.Button("Clear the chat")
 
     message_input.submit(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])
     submit_button.click(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])
