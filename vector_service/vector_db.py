@@ -45,10 +45,10 @@ class VectorDatabase:
         """
         retriever = self.vector_store.as_retriever(
             search_type="mmr",
-            search_kwargs={'k': k, 'lambda_mult': lambda_mult, "fetch_k":fetch_k}
+            search_kwargs={'k': k, 'lambda_mult': lambda_mult, "fetch_k": fetch_k}
         )
 
-        relevant_documents = retriever.get_relevant_documents(query_text)
+        relevant_documents = retriever.invoke(query_text)
         return relevant_documents
 
     def get_num_documents(self) -> int:

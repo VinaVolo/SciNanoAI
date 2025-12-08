@@ -1,11 +1,43 @@
 import os
+
 import gradio as gr
 import requests
 
-DB_API_URL = "http://localhost:8000"  # API for data base
-CHAT_API_URL = "http://localhost:8001"  # API for chat
+try:  # Allow running as script from chatbot_app directory.
+    from chatbot_app.config import ChatbotSettings
+except ModuleNotFoundError:  # pragma: no cover - CLI usage only
+    import importlib
+    import pathlib
+    import sys
 
-def chat(user_input, history):
+    project_root = pathlib.Path(__file__).resolve().parent.parent
+    if str(project_root) not in sys.path:
+        sys.path.append(str(project_root))
+
+    ChatbotSettings = importlib.import_module("chatbot_app.config").ChatbotSettings  # type: ignore
+
+settings = ChatbotSettings.from_env()
+CHAT_API_URL = settings.chat_api_url
+
+
+def _normalize_messages(conversation):
+    """
+    Ensures each chat message is a dict with role/content fields.
+    """
+    normalized = []
+    for message in conversation or []:
+        if isinstance(message, dict) and "role" in message and "content" in message:
+            normalized.append({"role": message["role"], "content": message["content"]})
+        elif isinstance(message, (list, tuple)) and len(message) == 2:
+            user, assistant = message
+            normalized.append({"role": "user", "content": user})
+            normalized.append({"role": "assistant", "content": assistant})
+        else:
+            normalized.append({"role": "assistant", "content": str(message)})
+    return normalized
+
+
+def chat(user_input):
     """
     Sends a message to the chat API and updates the conversation history.
 
@@ -24,20 +56,21 @@ def chat(user_input, history):
     """
 
     try:
-        # Отправляем запрос в чат API
         response = requests.post(f"{CHAT_API_URL}/chat", json={"message": user_input})
         if response.status_code == 200:
             data = response.json()
-            reply = data['reply']
-            history.append((user_input, reply))
+            conversation = data.get("conversation_history", [])
+            return "", _normalize_messages(conversation)
         else:
             error_message = f"Ошибка в чат-боте: {response.text}"
-            history.append((user_input, error_message))
-        return "", history
     except Exception as e:
         error_message = f"Ошибка соединения с чат-ботом: {str(e)}"
-        history.append((user_input, error_message))
-        return "", history
+
+    conversation_fallback = [
+        {"role": "user", "content": user_input},
+        {"role": "assistant", "content": error_message},
+    ]
+    return "", _normalize_messages(conversation_fallback)
 
 def clear_chat():
     """
@@ -54,10 +87,13 @@ def clear_chat():
             return []
         else:
             error_message = f"Ошибка API при очистке: {response.text}"
-            return [(None, error_message)]
     except Exception as e:
         error_message = f"Ошибка соединения с чат-ботом: {str(e)}"
-        return [(None, error_message)]
+    return _normalize_messages([{"role": "assistant", "content": error_message}])
+
+GRADIO_USERNAME = os.getenv("GRADIO_USERNAME") or os.getenv("username")
+GRADIO_PASSWORD = os.getenv("GRADIO_PASSWORD") or os.getenv("password")
+
 
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Добро пожаловать в ChatBot!")
@@ -73,7 +109,7 @@ with gr.Blocks() as demo:
     clear_button.click(clear_chat, outputs=[chatbot_widget])
 
 demo.launch(
-    auth=(os.environ["username"], os.environ["password"]),
+    auth=(GRADIO_USERNAME, GRADIO_PASSWORD) if GRADIO_USERNAME and GRADIO_PASSWORD else None,
     auth_message="Enter your username and password",
     server_port=8517,
     server_name="0.0.0.0",

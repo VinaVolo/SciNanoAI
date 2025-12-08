@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI
@@ -8,20 +9,18 @@ from models import Document, QueryRequest, QueryResponse
 from vector_db import VectorDatabase
 
 
+BASE_DIR = Path(__file__).resolve().parents[1]
+DEFAULT_DB_PATH = BASE_DIR / "db" / "intfloat_multilingual-e5-large"
+
+
 @dataclass(frozen=True)
 class VectorServiceSettings:
     """
     Holds configuration for the vector service.
     """
 
-    db_path: str = os.getenv(
-        "VECTOR_DB_PATH",
-        os.path.join("db", "intfloat_multilingual-e5-large"),
-    )
-    model_name: str = os.getenv(
-        "VECTOR_MODEL_NAME",
-        "intfloat/multilingual-e5-large",
-    )
+    db_path: str = os.getenv("VECTOR_DB_PATH") or str(DEFAULT_DB_PATH)
+    model_name: str = os.getenv("VECTOR_MODEL_NAME", "intfloat/multilingual-e5-large")
 
     def __post_init__(self) -> None:
         if not self.db_path:
