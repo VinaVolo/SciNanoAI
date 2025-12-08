@@ -124,7 +124,9 @@ celerybeat.pid
 # Skip data
 data/
 db/
-.csv
+.DS_Store
+*.csv
+*.xlsx
 
 # Environments
 .env

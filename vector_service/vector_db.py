@@ -50,3 +50,55 @@ class VectorDatabase:
 
         relevant_documents = retriever.get_relevant_documents(query_text)
         return relevant_documents
+
+    def get_num_documents(self) -> int:
+        """
+        Returns the number of documents stored inside the FAISS docstore.
+
+        Returns:
+            int: Count of documents available in the underlying vector store.
+        """
+        return len(self.vector_store.docstore._dict)
+    
+    def get_document_by_name(self, doc_name: str):
+        """
+        Retrieves a document from the vector database by its name.
+
+        This method searches through the documents stored in the FAISS index
+        and returns the first document whose metadata contains the given name.
+
+        Args:
+            doc_name (str): The name of the document to retrieve.
+
+        Returns:
+            dict or None: The document if found, otherwise None.
+        """
+        # В FAISS документы хранятся внутри docstore
+        for doc_id, doc in self.vector_store.docstore._dict.items():
+            metadata = doc.metadata if hasattr(doc, "metadata") else {}
+            if metadata.get("filename") == doc_name:
+                return doc
+        return None
+    
+    
+    def delete_document_by_name(self, doc_name: str) -> bool:
+        """
+        Deletes a document from the vector database by its name.
+
+        This method searches through the FAISS index for a document whose
+        metadata contains the given name and removes it from the database.
+
+        Args:
+            doc_name (str): The name of the document to delete.
+
+        Returns:
+            bool: True if the document was found and deleted, False otherwise.
+        """
+        # Ищем документ по имени в метаданных
+        for doc_id, doc in self.vector_store.docstore._dict.items():
+            metadata = getattr(doc, "metadata", {})
+            if metadata.get("filename") == doc_name:
+                # Удаляем из FAISS по doc_id
+                self.vector_store.delete([doc_id])
+                return True
+        return False

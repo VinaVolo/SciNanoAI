@@ -1,39 +1,85 @@
 import os
+from dataclasses import dataclass
+from typing import Optional
+
 from fastapi import FastAPI
+
+from models import Document, QueryRequest, QueryResponse
 from vector_db import VectorDatabase
-from models import QueryRequest, QueryResponse, Document
 
-app = FastAPI()
 
-vector_db = VectorDatabase(
-    db_path=os.path.join("db", "intfloat_multilingual-e5-large"),
-    model_name='intfloat/multilingual-e5-large'
-)
-
-@app.post("/query", response_model=QueryResponse)
-def query_vector_db(request: QueryRequest):
+@dataclass(frozen=True)
+class VectorServiceSettings:
     """
-    Queries the vector database using the given query text and parameters.
-
-    Args:
-        request (QueryRequest): The query request containing the query text and parameters.
-
-    Returns:
-        QueryResponse: A response containing the list of relevant documents.
+    Holds configuration for the vector service.
     """
-    documents = vector_db.query(request.query, request.k, request.lambda_mult, request.fetch_k)
-    response_documents = [
-        Document(content=doc.page_content, metadata=doc.metadata) for doc in documents
-    ]
-    return QueryResponse(documents=response_documents)
 
-@app.get("/num_documents")
-def get_num_documents():
-    """
-    Returns the number of documents stored in the vector database.
+    db_path: str = os.getenv(
+        "VECTOR_DB_PATH",
+        os.path.join("db", "intfloat_multilingual-e5-large"),
+    )
+    model_name: str = os.getenv(
+        "VECTOR_MODEL_NAME",
+        "intfloat/multilingual-e5-large",
+    )
 
-    Returns:
-        dict: A dictionary with a single key "num_documents" containing the number of documents in the vector database.
+    def __post_init__(self) -> None:
+        if not self.db_path:
+            raise ValueError("VECTOR_DB_PATH must be provided.")
+        if not self.model_name:
+            raise ValueError("VECTOR_MODEL_NAME must be provided.")
+
+
+class VectorService:
     """
-    num_documents = vector_db.get_num_documents()
-    return {"num_documents": num_documents}
+    Facade that exposes vector DB functionality to the API layer.
+    """
+
+    def __init__(self, settings: VectorServiceSettings, vector_db: Optional[VectorDatabase] = None):
+        self.settings = settings
+        self.vector_db = vector_db or VectorDatabase(
+            db_path=settings.db_path,
+            model_name=settings.model_name,
+        )
+
+    def query(self, request: QueryRequest) -> QueryResponse:
+        documents = self.vector_db.query(
+            request.query,
+            request.k,
+            request.lambda_mult,
+            request.fetch_k,
+        )
+        response_documents = [
+            Document(content=doc.page_content, metadata=doc.metadata)
+            for doc in documents
+        ]
+        return QueryResponse(documents=response_documents)
+
+    def get_document_count(self) -> int:
+        return self.vector_db.get_num_documents()
+
+
+class VectorAPI:
+    """
+    Binds FastAPI routes to service methods.
+    """
+
+    def __init__(self, service: VectorService):
+        self.service = service
+        self.app = FastAPI()
+        self._register_routes()
+
+    def _register_routes(self) -> None:
+        @self.app.post("/query", response_model=QueryResponse)
+        def query_vector_db(request: QueryRequest):
+            return self.service.query(request)
+
+        @self.app.get("/num_documents")
+        def get_num_documents():
+            return {"num_documents": self.service.get_document_count()}
+
+
+settings = VectorServiceSettings()
+service = VectorService(settings=settings)
+vector_api = VectorAPI(service=service)
+app = vector_api.app
