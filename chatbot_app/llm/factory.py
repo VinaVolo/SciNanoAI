@@ -66,9 +66,7 @@ class LLMFactory:
         return OllamaChatClient(
             model_name=model_name,
             base_url=self._settings.ollama_api_base,
-            api_key=self._settings.ollama_api_key or None,
-            jwt_token=self._settings.ollama_jwt_token or None,
-            default_max_tokens=self._settings.max_reply_tokens,
+            timeout_seconds=self._settings.vector_timeout_seconds,
         )
 
     @staticmethod

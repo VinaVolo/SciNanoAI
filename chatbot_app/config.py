@@ -44,8 +44,6 @@ class ChatbotSettings:
     decomposer_threshold: float
     vector_timeout_seconds: int
     ollama_api_base: str
-    ollama_api_key: str
-    ollama_jwt_token: str
 
     @classmethod
     def from_env(cls) -> "ChatbotSettings":
@@ -71,9 +69,7 @@ class ChatbotSettings:
             vector_fetch_k=_get_int_env("VECTOR_FETCH_K", 50),
             decomposer_threshold=_get_float_env("DECOMPOSER_THRESHOLD", 0.2),
             vector_timeout_seconds=_get_int_env("VECTOR_TIMEOUT_SECONDS", 30),
-            ollama_api_base=_get_env("OLLAMA_API_BASE", "https://chat.itmo.shockofwave.su/api/chat/completions"),
-            ollama_api_key=_get_env("OLLAMA_API_KEY", ""),
-            ollama_jwt_token=_get_env("OLLAMA_JWT_TOKEN", ""),
+            ollama_api_base=_get_env("OLLAMA_API_BASE", "http://ollama.lab:11434/api/chat"),
         )
 
     @property

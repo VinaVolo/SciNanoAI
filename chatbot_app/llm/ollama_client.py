@@ -1,6 +1,5 @@
 from __future__ import annotations
-
-from typing import Sequence
+from typing import List, Sequence
 
 import requests
 
@@ -9,54 +8,55 @@ from .base import LLMClient, Message
 
 class OllamaChatClient(LLMClient):
     """
-    Minimal OpenAI-compatible client for locally hosted models (e.g., gpt-oss via Ollama).
+    Minimal client for interacting with Ollama-compatible /api/chat endpoints.
     """
 
     def __init__(
         self,
         model_name: str,
         base_url: str,
-        api_key: str | None = None,
-        jwt_token: str | None = None,
         *,
-        default_temperature: float = 0.2,
-        default_max_tokens: int = 4096,
         timeout_seconds: int = 60,
     ):
         super().__init__(model_name)
         self._base_url = base_url.rstrip("/")
-        self._api_key = api_key or ""
-        self._jwt_token = jwt_token or ""
-        self._default_temperature = default_temperature
-        self._default_max_tokens = default_max_tokens
         self._timeout = timeout_seconds
 
+    def _serialize_messages(self, messages: Sequence[Message]) -> List[Message]:
+        serialized: List[Message] = []
+        for message in messages:
+            role = message.get("role") or "user"
+            content = message.get("content") or ""
+            serialized.append({"role": role, "content": content})
+        return serialized
+
     def generate(self, messages: Sequence[Message], **kwargs) -> str:
-        temperature = kwargs.get("temperature", self._default_temperature)
-        max_tokens = kwargs.get("max_tokens", self._default_max_tokens)
+        msg_list = self._serialize_messages(messages)
+        options = {}
+        if "temperature" in kwargs and kwargs["temperature"] is not None:
+            options["temperature"] = kwargs["temperature"]
+        if "max_tokens" in kwargs and kwargs["max_tokens"] is not None:
+            options["num_predict"] = kwargs["max_tokens"]
+
         payload = {
             "model": self.model_name,
-            "messages": list(messages),
-            "temperature": temperature,
-            "max_tokens": max_tokens,
+            "messages": msg_list,
+            "stream": False,  # We return the result at once
         }
-        headers = {"Content-Type": "application/json"}
-        if self._jwt_token:
-            headers["Authorization"] = f"Bearer {self._jwt_token}"
-        # if self._api_key:
-        #     headers["X-API-Key"] = self._api_key
+        if options:
+            payload["options"] = options
 
-        print(f"{self._base_url}")
-        
         response = requests.post(
-            f"{self._base_url}",
+            self._base_url,
             json=payload,
-            headers=headers,
             timeout=self._timeout,
         )
         response.raise_for_status()
+
         data = response.json()
-        choice = (data.get("choices") or [{}])[0]
-        message = choice.get("message", {})
-        content = message.get("content") or ""
-        return content.strip()
+        if isinstance(data, dict):
+            if isinstance(data.get("message"), dict):
+                return str(data["message"].get("content", "")).strip()
+            if "response" in data:
+                return str(data["response"]).strip()
+        return str(data).strip()

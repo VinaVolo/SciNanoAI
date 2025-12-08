@@ -3,10 +3,14 @@ from __future__ import annotations
 import logging
 from typing import List
 
+import os
+import pandas as pd
+
 from ..config import ChatbotSettings
 from ..core import prompts
 from ..core.history import ConversationHistory
 from ..llm.base import LLMClient
+from src.utils.paths import get_project_path
 from .analysis import AnswerEvaluator, ConversationSummarizer, QuestionRephraser
 from .decomposer import DecomposerAgent
 from .vector_client import VectorDatabaseClient
@@ -38,6 +42,7 @@ class ChatbotService:
         self._evaluator = AnswerEvaluator(analysis_llm)
         self._rephraser = QuestionRephraser(analysis_llm)
         self._max_rephrase_attempts = 2
+        self._reference_mapping = self._load_reference_mapping()
 
     @property
     def conversation_history(self) -> List[dict]:
@@ -62,11 +67,13 @@ class ChatbotService:
             prompt_messages,
             max_tokens=self._settings.max_reply_tokens,
         )
+        reply = self._replace_reference_links(reply)
         self._history.add_assistant_message(reply)
 
         if self._should_retry(reply, question, attempt):
-            reformulated_question = self._rephraser.rephrase(question)
-            return self._respond(reformulated_question, attempt + 1)
+            reformulated_question = self._rephraser.rephrase(question).strip()
+            if self._is_valid_reformulation(question, reformulated_question):
+                return self._respond(reformulated_question, attempt + 1)
 
         return reply
 
@@ -74,6 +81,45 @@ class ChatbotService:
         if attempt >= self._max_rephrase_attempts:
             return False
         return not self._evaluator.is_answer_complete(reply, question)
+
+    def _is_valid_reformulation(self, original: str, reformulated: str) -> bool:
+        if not reformulated:
+            return False
+        if reformulated.strip().lower() == original.strip().lower():
+            return False
+        placeholder_phrases = (
+            "пожалуйста", "уточните", "напишите", "к сожалению", "вопрос не указан"
+        )
+        lowered = reformulated.lower()
+        if any(lowered.startswith(prefix) for prefix in placeholder_phrases):
+            return False
+        if "?" not in reformulated and len(reformulated.split()) < 6:
+            return False
+        return True
+
+    def _load_reference_mapping(self) -> pd.DataFrame | None:
+        data_path = os.path.join(get_project_path(), "data", "updated_references_links.csv")
+        if os.path.exists(data_path):
+            return pd.read_csv(data_path)
+        return None
+
+    def extract_bracket_content(self, text: str) -> List[str]:
+        import re
+
+        return re.findall(r"\[([^\[\]]+)\]", text)
+
+    def _replace_reference_links(self, reply: str) -> str:
+        if self._reference_mapping is None:
+            return reply
+        df = self._reference_mapping
+        found_links = self.extract_bracket_content(reply)
+        new_answer = reply
+        for link in found_links:
+            for filename in df["filename"].values:
+                if link in filename:
+                    new_link = df[df["filename"] == filename].iloc[0].link_name
+                    new_answer = new_answer.replace(link, new_link)
+        return new_answer
 
     def _build_prompt(self, question: str) -> str:
         if self._decomposer.should_use_database(question):

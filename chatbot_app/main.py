@@ -32,7 +32,14 @@ def chat_endpoint(request: ChatRequest):
     """
 
     try:
-        response_message = chatbot_service.generate_response(request.message)
+        user_message = request.message or ""
+        if not user_message.strip():
+            return ChatResponse(
+                reply="",
+                conversation_history=chatbot_service.conversation_history,
+            )
+
+        response_message = chatbot_service.generate_response(user_message)
         return ChatResponse(
             reply=response_message,
             conversation_history=chatbot_service.conversation_history,

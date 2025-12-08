@@ -37,7 +37,7 @@ def _normalize_messages(conversation):
     return normalized
 
 
-def chat(user_input):
+def chat(user_input, history):
     """
     Sends a message to the chat API and updates the conversation history.
 
@@ -55,12 +55,17 @@ def chat(user_input):
         Exception: If there is a connection error with the chat API.
     """
 
+    history = _normalize_messages(history)
+
+    if not user_input or not user_input.strip():
+        return history
+
     try:
         response = requests.post(f"{CHAT_API_URL}/chat", json={"message": user_input})
         if response.status_code == 200:
             data = response.json()
             conversation = data.get("conversation_history", [])
-            return "", _normalize_messages(conversation)
+            return _normalize_messages(conversation)
         else:
             error_message = f"Ошибка в чат-боте: {response.text}"
     except Exception as e:
@@ -70,7 +75,7 @@ def chat(user_input):
         {"role": "user", "content": user_input},
         {"role": "assistant", "content": error_message},
     ]
-    return "", _normalize_messages(conversation_fallback)
+    return _normalize_messages(conversation_fallback)
 
 def clear_chat():
     """
@@ -95,6 +100,10 @@ GRADIO_USERNAME = os.getenv("GRADIO_USERNAME") or os.getenv("username")
 GRADIO_PASSWORD = os.getenv("GRADIO_PASSWORD") or os.getenv("password")
 
 
+def _reset_textbox():
+    return ""
+
+
 with gr.Blocks() as demo:
     gr.Markdown("# 🤖 Добро пожаловать в ChatBot!")
     gr.Markdown("Привет! Это чат-бот на основе RAG. В базе данных 301 документ. Задайте вопрос!")
@@ -104,8 +113,19 @@ with gr.Blocks() as demo:
     submit_button = gr.Button("Отправить")
     clear_button = gr.Button("Очистить чат")
 
-    message_input.submit(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])
-    submit_button.click(chat, inputs=[message_input, chatbot_widget], outputs=[message_input, chatbot_widget])
+    message_submit = message_input.submit(
+        chat,
+        inputs=[message_input, chatbot_widget],
+        outputs=[chatbot_widget],
+    )
+    message_submit.then(_reset_textbox, inputs=None, outputs=[message_input], queue=False)
+
+    button_submit = submit_button.click(
+        chat,
+        inputs=[message_input, chatbot_widget],
+        outputs=[chatbot_widget],
+    )
+    button_submit.then(_reset_textbox, inputs=None, outputs=[message_input], queue=False)
     clear_button.click(clear_chat, outputs=[chatbot_widget])
 
 demo.launch(
