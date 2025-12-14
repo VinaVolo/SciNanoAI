@@ -29,6 +29,9 @@ class DecomposerAgent:
         Returns:
             bool: True if the question should be answered from the database, False otherwise.
         """
+        if not question or not question.strip():
+            return False
+
         result = self.classifier(question, self.topics)
         top_label = result['labels'][0]
         top_score = result['scores'][0]
@@ -36,4 +39,3 @@ class DecomposerAgent:
         if top_label == "Another topic" or top_score < self.threshold:
             return False
         return True
-

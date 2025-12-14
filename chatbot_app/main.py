@@ -1,11 +1,13 @@
 import os
+import logging
 from fastapi import FastAPI, HTTPException
 from models import ChatRequest, ChatResponse
 from chatbot import ChatBot
 
 app = FastAPI()
 
-chatbot_instance = ChatBot(llm_model="openai/gpt-4o-mini")
+chatbot_instance = ChatBot(llm_model="gpt-oss:latest")
+logger = logging.getLogger("scinano_ai")
 
 @app.post("/chat", response_model=ChatResponse)
 def chat_endpoint(request: ChatRequest):
@@ -28,10 +30,25 @@ def chat_endpoint(request: ChatRequest):
     """
     try:
         user_message = request.message
-        response_message = chatbot_instance.generate_response(user_message)
+        images = request.images or []
+        total_image_bytes = sum(len(img or "") for img in images)
+        logger.info(
+            "API /chat invoked message_length=%d images=%d total_image_bytes=%d",
+            len(user_message),
+            len(images),
+            total_image_bytes,
+        )
+        if images:
+            logger.debug(
+                "API /chat image sizes detail: %s",
+                [len(img or "") for img in images],
+            )
+        response_message = chatbot_instance.generate_response(user_message, images=images)
         conversation_history = chatbot_instance.conversation_history
+        logger.info("API /chat succeeded conversation_len=%d", len(conversation_history))
         return ChatResponse(reply=response_message, conversation_history=conversation_history)
     except Exception as e:
+        logger.exception("API /chat failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 @app.post("/clear_history")
@@ -43,4 +60,5 @@ def clear_history():
         dict: {'message': 'History cleared'}
     """
     chatbot_instance.conversation_history = []
+    logger.info("API /clear_history invoked; history cleared.")
     return {"message": "History cleared"}
