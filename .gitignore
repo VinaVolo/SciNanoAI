@@ -122,7 +122,7 @@ celerybeat.pid
 *.sage.py
 
 # Skip data
-data/
+/data
 db/
 .csv
 
@@ -167,5 +167,6 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+*.zip
 chatbot_app/.gradio/
 /models
