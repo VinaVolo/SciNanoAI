@@ -30,10 +30,14 @@ def format_row(row: pd.Series) -> str:
     return (
         f"material_id: {row['material_id']}; "
         f"structure_id: {row['structure_id']}; "
-        f"magnification: {row['magnification']}; "
+        f"class: {row['class']}; "
+        f"class: {row['class']}; "    
         f"mean_radius: {row['mean_radius']}; "
         f"mean_area: {row['mean_area']}; "
-        f"class: {row['class']}"
+        f"num_objects_in_image: {row['num_objects_in_image']}; "
+        f"img_area: {row['img_area']}; "
+        f"%, area: {row['%, area']}; "
+        f"cyto/nuclei (cell spreading): {row['cyto/nuclei (cell spreading)']}"
     )
 
 
@@ -65,7 +69,6 @@ def main():
                 "row_index": int(idx),
                 "material_id": row["material_id"],
                 "structure_id": row["structure_id"],
-                "magnification": row["magnification"],
                 "class": row["class"],
             }
         )
