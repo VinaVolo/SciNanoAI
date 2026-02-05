@@ -96,6 +96,18 @@ class ChatBot:
         self.last_image_decision = None
         self.logger = logger
         self.cellpose_model = None
+        self.image_um_per_px = 100 / 155
+        env_um_per_px = os.getenv("IMAGE_UM_PER_PX")
+        if env_um_per_px:
+            try:
+                self.image_um_per_px = float(env_um_per_px)
+            except ValueError:
+                self.logger.warning(
+                    "Invalid IMAGE_UM_PER_PX=%r; falling back to default %s",
+                    env_um_per_px,
+                    self.image_um_per_px,
+                )
+        self.logger.info("Image scale: um_per_px=%s", self.image_um_per_px)
 
         if self.local_api_base and self.local_api_key:
             self.local_client = LocalLLMAgent(
@@ -112,7 +124,22 @@ class ChatBot:
             )
         self.logger.info("ChatBot initialized with llm_model=%s", llm_model)
 
-        cellpose_path = PROJECT_ROOT / "models" / "cellpose_v0_1" / "cellpose_full_stream_filtred"
+        cellpose_path = Path(
+            os.getenv(
+                "CELLPOSE_MODEL_PATH",
+                str(
+                    Path("models")
+                    / "cellpose_v0_1"
+                    / "cellpose_full_stream_filtred"
+                ),
+            )
+        )
+        if not cellpose_path.is_absolute():
+            cellpose_base = PROJECT_ROOT
+            chatbot_dir = Path(__file__).resolve().parent
+            if not (cellpose_base / "models").exists() and (chatbot_dir / "models").exists():
+                cellpose_base = chatbot_dir
+            cellpose_path = cellpose_base / cellpose_path
         if cellpose_models and cellpose_path.exists():
             try:
                 import torch
@@ -571,14 +598,16 @@ class ChatBot:
             return "нет ярких пикселей"
         yellow_score = np.mean((R[mask] + G[mask]) - B[mask])
         blue_score = np.mean(B[mask] - (R[mask] + G[mask]))
-        return "ядро (желтый)" if yellow_score > blue_score else "цитоплазма (синий)"
+        return "цитоплазма (желтый)" if yellow_score > blue_score else "ядро (синий)"
 
     def segment_image(self, img: Image.Image, threshold: int = 40):
         """
         Runs Cellpose if available; otherwise falls back to a brightness-based stub.
-        Returns list of {"area": float, "radius": float}.
+        Returns list of {"area": float, "radius": float} in micrometer units
+        (area in µm^2, radius in µm).
         """
         arr = np.array(img.convert("RGB"))
+        um_per_px = float(self.image_um_per_px or 0.0)
         if self.cellpose_model:
             try:
                 masks, flows, styles = self.cellpose_model.eval(
@@ -589,11 +618,10 @@ class ChatBot:
                 for label in np.unique(mask):
                     if label == 0:
                         continue
-                    area = float(np.sum(mask == label))
-                    radius = math.sqrt(area / math.pi)
-                    # scale factors for neural net output
-                    radius *= (100 / 155)
-                    area *= (100 / 155) ** 2
+                    area_px = float(np.sum(mask == label))
+                    radius_px = math.sqrt(area_px / math.pi)
+                    area = area_px * (um_per_px**2) if um_per_px > 0 else area_px
+                    radius = radius_px * um_per_px if um_per_px > 0 else radius_px
                     entries.append({"area": area, "radius": radius})
                 return entries
             except Exception as exc:
@@ -601,10 +629,12 @@ class ChatBot:
         # stub fallback
         arr_gray = np.array(img.convert("L")).astype(float)
         mask = arr_gray > threshold
-        area = float(np.sum(mask))
-        if area == 0:
+        area_px = float(np.sum(mask))
+        if area_px == 0:
             return []
-        radius = math.sqrt(area / math.pi)
+        radius_px = math.sqrt(area_px / math.pi)
+        area = area_px * (um_per_px**2) if um_per_px > 0 else area_px
+        radius = radius_px * um_per_px if um_per_px > 0 else radius_px
         return [{"area": area, "radius": radius}]
 
     def process_images(self, encoded_images):
@@ -665,8 +695,8 @@ class ChatBot:
                 }
                 metrics.append(entry)
                 summaries.append(
-                    f"{name}: класс={classification}, средняя площадь={avg_area:.2f}, "
-                    f"средний радиус={avg_radius:.2f}, сегментов после очистки={len(group)}."
+                    f"{name}: класс={classification}, средняя площадь={avg_area:.2f} мкм^2, "
+                    f"средний радиус={avg_radius:.2f} мкм, сегментов после очистки={len(group)}."
                 )
         return "\n".join(summaries), metrics
 

@@ -1,13 +1,24 @@
 import os
+from pathlib import Path
 from fastapi import FastAPI
 from vector_db import VectorDatabase
 from models import QueryRequest, QueryResponse, Document
 
 app = FastAPI()
 
+HERE = Path(__file__).resolve().parent
+PROJECT_ROOT = HERE.parent
+if not (PROJECT_ROOT / "db").exists() and (HERE / "db").exists():
+    PROJECT_ROOT = HERE
+DEFAULT_DB_PATH = Path("db") / "intfloat_multilingual-e5-large"
+
+db_path = Path(os.getenv("VECTOR_DB_PATH", str(DEFAULT_DB_PATH)))
+if not db_path.is_absolute():
+    db_path = PROJECT_ROOT / db_path
+
 vector_db = VectorDatabase(
-    db_path="/root/SciNanoAI/db/intfloat_multilingual-e5-large",
-    model_name='intfloat/multilingual-e5-large'
+    db_path=str(db_path),
+    model_name=os.getenv("VECTOR_EMBEDDING_MODEL", "intfloat/multilingual-e5-large"),
 )
 
 @app.post("/query", response_model=QueryResponse)

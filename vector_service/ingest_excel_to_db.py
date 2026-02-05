@@ -3,8 +3,8 @@ Append rows from an Excel table into the existing FAISS vector store.
 
 Usage:
     .venv/bin/python vector_service/ingest_excel_to_db.py \
-        --excel /Users/vinavolo/Public/Project/SciNanoAI/data/img_result_nn_radius_cyto_2.xlsx \
-        --db-path /Users/vinavolo/Public/Project/SciNanoAI/db/intfloat_multilingual-e5-large \
+        --excel data/img_result_nn_radius_cyto_2.xlsx \
+        --db-path db/intfloat_multilingual-e5-large \
         --model intfloat/multilingual-e5-large
 """
 
@@ -42,12 +42,17 @@ def format_row(row: pd.Series) -> str:
 
 
 def main():
+    here = Path(__file__).resolve().parent
+    project_root = here.parent
+    if not (project_root / "db").exists() and (here / "db").exists():
+        project_root = here
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--excel", required=True, help="Path to Excel file")
     parser.add_argument(
         "--db-path",
-        default="/root/SciNanoAI/db/intfloat_multilingual-e5-large",
-        help="Path to FAISS directory",
+        default="db/intfloat_multilingual-e5-large",
+        help="Path to FAISS directory (relative to project root if not absolute).",
     )
     parser.add_argument(
         "--model",
@@ -58,6 +63,8 @@ def main():
 
     excel_path = Path(args.excel)
     db_path = Path(args.db_path)
+    if not db_path.is_absolute():
+        db_path = project_root / db_path
 
     df = pd.read_excel(excel_path)
     texts = [format_row(row) for _, row in df.iterrows()]
