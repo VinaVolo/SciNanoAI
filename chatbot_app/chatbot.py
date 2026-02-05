@@ -115,10 +115,13 @@ class ChatBot:
         cellpose_path = PROJECT_ROOT / "models" / "cellpose_v0_1" / "cellpose_full_stream_filtred"
         if cellpose_models and cellpose_path.exists():
             try:
+                import torch
+                use_gpu = torch.cuda.is_available()
                 self.cellpose_model = cellpose_models.CellposeModel(
-                    gpu=False, pretrained_model=str(cellpose_path)
+                    gpu=use_gpu, pretrained_model=str(cellpose_path)
                 )
-                self.logger.info("Cellpose model loaded from %s", cellpose_path)
+                device_name = torch.cuda.get_device_name(0) if use_gpu else "CPU"
+                self.logger.info("Cellpose model loaded from %s on %s", cellpose_path, device_name)
             except Exception as exc:
                 self.logger.error("Failed to load Cellpose model: %s", exc)
         else:
@@ -208,7 +211,7 @@ class ChatBot:
                     "Для работы с изображениями необходимо задать LOCAL_API_BASE и LOCAL_API_KEY."
                 )
             if self._looks_like_image_question(question):
-               image_mode = "image_analysis"
+                image_mode = "image_analysis"
                 use_database = False
                 self.logger.info("Heuristic forced image_analysis based on question text.")
             elif self.formal_request_agent.is_formal(question):

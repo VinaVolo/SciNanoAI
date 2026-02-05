@@ -7,13 +7,13 @@ class LocalLLMAgent:
         self.api_key = api_key
         self.model = model
 
-    def complete(self, prompt: str, temperature: float = 0) -> str:
+    def complete(self, prompt: str, temperature: float = 0, max_tokens: int = 256) -> str:
         headers = {"Authorization": f"Bearer {self.api_key}"}
         data = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": temperature,
-            "max_tokens": 256,
+            "max_tokens": max_tokens,
         }
         response = requests.post(self.api_base, headers=headers, json=data, timeout=60)
         response.raise_for_status()
@@ -67,4 +67,4 @@ class FormalImageAnswerAgent:
             f"Метрики:\n{metrics_summary}\n\n"
             f"Вопрос: {question}"
         )
-        return self.client.complete(prompt, temperature=0.2)
+        return self.client.complete(prompt, temperature=0.2, max_tokens=2048)
