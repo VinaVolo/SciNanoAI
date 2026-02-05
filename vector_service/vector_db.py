@@ -4,7 +4,10 @@ from langchain_huggingface import HuggingFaceEmbeddings
 class VectorDatabase:
     def __init__(self, db_path, model_name):
         self.db_path = db_path
-        self.embeddings = HuggingFaceEmbeddings(model_name=model_name)
+        self.embeddings = HuggingFaceEmbeddings(
+                model_name=model_name,
+                model_kwargs={"device": "cpu"}
+            )
         self.vector_store = self.load_vector_database()
 
     def load_vector_database(self):

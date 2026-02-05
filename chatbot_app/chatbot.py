@@ -208,7 +208,7 @@ class ChatBot:
                     "Для работы с изображениями необходимо задать LOCAL_API_BASE и LOCAL_API_KEY."
                 )
             if self._looks_like_image_question(question):
-                image_mode = "image_analysis"
+               image_mode = "image_analysis"
                 use_database = False
                 self.logger.info("Heuristic forced image_analysis based on question text.")
             elif self.formal_request_agent.is_formal(question):
@@ -309,7 +309,7 @@ class ChatBot:
                     temperature=0.2,
                     max_tokens=4096,
                     model="GigaChat-Pro"
-                )   
+                    )   
             reply = llm_gigachat.invoke(prompt).content
             
         elif self.llm_model == "gpt-oss:latest":

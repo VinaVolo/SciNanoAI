@@ -46,7 +46,7 @@ def main():
     parser.add_argument("--excel", required=True, help="Path to Excel file")
     parser.add_argument(
         "--db-path",
-        default="/Users/vinavolo/Public/Project/SciNanoAI/db/intfloat_multilingual-e5-large",
+        default="/root/SciNanoAI/db/intfloat_multilingual-e5-large",
         help="Path to FAISS directory",
     )
     parser.add_argument(
