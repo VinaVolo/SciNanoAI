@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -44,30 +45,63 @@ class VectorRepository:
 
     # ------------------------------------------------------------ lifecycle
     def load(self) -> None:
+        _LOG.info("VectorRepository.load() starting. index_path=%s", self._index_path)
+        t0 = time.monotonic()
+
         from langchain_community.vectorstores import FAISS
         from langchain_huggingface import HuggingFaceEmbeddings
 
+        _LOG.info("Step 1/4: checking index path %s ...", self._index_path)
         if not self._index_path.exists():
             raise FileNotFoundError(f"FAISS index not found at {self._index_path}")
 
+        _LOG.info("Step 2/4: reading manifest.json ...")
         manifest = IndexManifest.load(self._index_path / "manifest.json")
-        if manifest and manifest.embedding_model != self._embedding_model:
-            raise RuntimeError(
-                "Embedding-model mismatch: index built with "
-                f"{manifest.embedding_model!r} but service configured for "
-                f"{self._embedding_model!r}. Re-run the ingest pipeline."
+        if manifest:
+            _LOG.info(
+                "manifest found: embedding_model=%s dimension=%s",
+                manifest.embedding_model,
+                manifest.dimension,
+            )
+            if manifest.embedding_model != self._embedding_model:
+                raise RuntimeError(
+                    "Embedding-model mismatch: index built with "
+                    f"{manifest.embedding_model!r} but service configured for "
+                    f"{self._embedding_model!r}. Re-run the ingest pipeline."
+                )
+        else:
+            _LOG.warning(
+                "No manifest.json next to the index — cannot verify embedding model. "
+                "Continuing on user trust."
             )
 
+        _LOG.info(
+            "Step 3/4: initialising HuggingFaceEmbeddings model=%r device=%s "
+            "(first run downloads ~2 GB from huggingface.co; subsequent runs hit ~/.cache/huggingface)",
+            self._embedding_model,
+            self._device,
+        )
+        t_emb = time.monotonic()
         embeddings = HuggingFaceEmbeddings(
             model_name=self._embedding_model,
             model_kwargs={"device": self._device},
         )
+        _LOG.info("Embeddings ready in %.1fs", time.monotonic() - t_emb)
+
+        _LOG.info("Step 4/4: loading FAISS index from %s ...", self._index_path)
+        t_idx = time.monotonic()
         self._store = FAISS.load_local(
             str(self._index_path),
             embeddings,
             allow_dangerous_deserialization=True,
         )
-        _LOG.info("Vector index loaded: %s (%d vectors)", self._index_path, self.num_documents)
+        _LOG.info(
+            "Vector index loaded: %s (%d vectors) in %.1fs. Total startup time: %.1fs",
+            self._index_path,
+            self.num_documents,
+            time.monotonic() - t_idx,
+            time.monotonic() - t0,
+        )
 
     @property
     def loaded(self) -> bool:

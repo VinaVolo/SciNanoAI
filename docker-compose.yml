@@ -8,8 +8,18 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      # Surface HF Hub / transformers / langchain log lines during the long
+      # first-run model download. Override via .env if too verbose.
+      - SCINANO_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+      - TRANSFORMERS_VERBOSITY=info
+      - HF_HUB_VERBOSITY=info
+      - HF_HUB_DISABLE_PROGRESS_BARS=0
+      - TQDM_MININTERVAL=2
     volumes:
       - ./db:/app/db:ro
+      - hf_cache:/home/appuser/.cache/huggingface
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx,sys; sys.exit(0 if httpx.get('http://127.0.0.1:8000/health', timeout=3.0).status_code == 200 else 1)"]
       interval: 15s
@@ -34,9 +44,16 @@ services:
       - .env
     environment:
       - VECTOR_SERVICE_URL=http://vector_service:8000
+      - SCINANO_LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+      - TRANSFORMERS_VERBOSITY=info
+      - HF_HUB_VERBOSITY=info
+      - HF_HUB_DISABLE_PROGRESS_BARS=0
+      - TQDM_MININTERVAL=2
     volumes:
       - ./models:/app/models:ro
       - ./data:/app/data:ro
+      - hf_cache:/home/appuser/.cache/huggingface
     depends_on:
       vector_service:
         condition: service_healthy
@@ -75,3 +92,8 @@ services:
 networks:
   scinanoai_net:
     driver: bridge
+
+volumes:
+  # Persists the Hugging Face model cache across container recreations so the
+  # 2 GB embedding model and the 700 MB decomposer are downloaded only once.
+  hf_cache:
