@@ -11,9 +11,9 @@ import numpy as np
 import torch
 from cellpose import core, dynamics, io, models, train
 
-from src.data.datasets import DatasetBundle, MaskDatasetBuilder
-from src.train.config import CellposeTrainingConfig
-from src.train.metrics import InstanceMetrics
+from .config import CellposeTrainingConfig
+from .data import DatasetBundle, MaskDatasetBuilder
+from .metrics import InstanceMetrics
 
 
 @dataclass
@@ -435,7 +435,9 @@ class CellposeTrainer:
         if test_data is None and test_files is None:
             return None
 
-        np.random.seed(42)
+        # NOTE: Do NOT reseed numpy here. The seed is owned by the trainer's
+        # configuration (config.random_seed); the prior literal-42 reset
+        # silently overrode user-configured seeds on every validation pass.
         lavgt = 0.0
         loss_flow_sum = 0.0
         loss_prob_sum = 0.0

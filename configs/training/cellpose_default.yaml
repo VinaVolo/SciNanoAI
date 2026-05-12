@@ -1,0 +1,28 @@
+# Default training config for Cellpose. Override anything via a sibling YAML.
+train_dir: data/processed/bach_annot/train_merged
+test_dir: data/processed/bach_annot/test_merged
+image_suffix: .png
+mask_suffix: _masks.tif
+
+output_dir: models/cellpose_stream
+model_name: cellpose_full_stream_filtered
+pretrained_model: null
+
+n_epochs: 100
+batch_size: 8
+learning_rate: 0.0001
+weight_decay: 0.001
+nimg_per_epoch: 200
+nimg_test_per_epoch: 100
+
+log_every_seconds: 300
+save_every: 100
+save_each: false
+
+channel_axis: null
+normalize: true
+min_train_masks: 0
+bsize: 256
+
+freeze_encoder: true
+random_seed: 42
