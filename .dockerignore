@@ -20,5 +20,4 @@ docs
 .ruff_cache
 node_modules
 README.md
-LICENSE
 docker-compose.yml

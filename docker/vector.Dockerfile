@@ -17,6 +17,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-install-project --no-dev --extra vector
 
 COPY src ./src
+# LICENSE is referenced by pyproject.toml (license = { file = "LICENSE" })
+# and validated by hatchling at build time.
+COPY LICENSE ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --extra vector
 
