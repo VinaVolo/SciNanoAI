@@ -1,5 +1,8 @@
-# syntax=docker/dockerfile:1.7
 # ------------------------- builder ------------------------------------------
+# NOTE: no `# syntax=docker/dockerfile:...` directive on purpose. The BuildKit
+# frontend bundled with Docker 23+ already supports `--mount=type=cache`, and
+# pulling the dockerfile frontend image from docker.io is fragile on
+# restricted networks.
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
 
 ENV UV_LINK_MODE=copy \
