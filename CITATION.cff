@@ -1,0 +1,70 @@
+cff-version: 1.2.0
+title: "SciNanoAI: a retrieval-augmented chatbot for nanostructured-material design"
+message: >-
+  If you use SciNanoAI in academic work, please cite the accompanying article in
+  Journal of Chemical Information and Modeling.
+type: software
+authors:
+  - given-names: Nikita A.
+    family-names: Krotkov
+  - given-names: Dmitrii A.
+    family-names: Sbytov
+  - given-names: Anna A.
+    family-names: Chakhoyan
+  - given-names: Polina I.
+    family-names: Kornienko
+  - given-names: Anna A.
+    family-names: Starikova
+  - given-names: Maxim G.
+    family-names: Stepanov
+  - given-names: Anastasiia O.
+    family-names: Piven
+  - given-names: Timur A.
+    family-names: Aliev
+  - given-names: Tetiana
+    family-names: Orlova
+  - given-names: Mushegh S.
+    family-names: Rafayelyan
+  - given-names: Ekaterina V.
+    family-names: Skorb
+    email: e.skorb@itmo.ru
+license: MIT
+repository-code: "https://github.com/VinaVolo/SciNanoAI"
+url: "https://doi.org/10.1021/acs.jcim.5c01897"
+preferred-citation:
+  type: article
+  title: >-
+    Nanostructured Material Design via a Retrieval-Augmented Generation (RAG)
+    Approach: Bridging Laboratory Practice and Scientific Literature
+  authors:
+    - given-names: Nikita A.
+      family-names: Krotkov
+    - given-names: Dmitrii A.
+      family-names: Sbytov
+    - given-names: Anna A.
+      family-names: Chakhoyan
+    - given-names: Polina I.
+      family-names: Kornienko
+    - given-names: Anna A.
+      family-names: Starikova
+    - given-names: Maxim G.
+      family-names: Stepanov
+    - given-names: Anastasiia O.
+      family-names: Piven
+    - given-names: Timur A.
+      family-names: Aliev
+    - given-names: Tetiana
+      family-names: Orlova
+    - given-names: Mushegh S.
+      family-names: Rafayelyan
+    - given-names: Ekaterina V.
+      family-names: Skorb
+  journal: "Journal of Chemical Information and Modeling"
+  year: 2025
+  publisher:
+    name: American Chemical Society
+  doi: "10.1021/acs.jcim.5c01897"
+  url: "https://doi.org/10.1021/acs.jcim.5c01897"
+  notes: >-
+    Published as part of the J. Chem. Inf. Model. special issue
+    "Machine Learning in Materials Science".

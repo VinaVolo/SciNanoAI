@@ -7,8 +7,19 @@
 <p align="center">
   <a href="docs/architecture.md">Architecture</a> ·
   <a href="docs/adr">Decision Records</a> ·
-  <a href=".env.example">Environment template</a>
+  <a href=".env.example">Environment template</a> ·
+  <a href="#citation">Cite</a>
 </p>
+
+<p align="center">
+  <a href="https://doi.org/10.1021/acs.jcim.5c01897"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c01897-B31B1B.svg"></a>
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
+</p>
+
+> The original RAG platform is described in **Krotkov *et&nbsp;al.*, *J. Chem. Inf. Model.* 2025**
+> ([doi:10.1021/acs.jcim.5c01897](https://doi.org/10.1021/acs.jcim.5c01897)).
+> The Cellpose-based image-analysis extension shipped on this branch is the subject
+> of a forthcoming follow-up publication.
 
 ---
 
@@ -161,6 +172,48 @@ Compared to the pre-refactor layout:
 - `chatbot_app/main.py` and `vector_service/main.py` remain as thin re-export shims so existing
   process managers (`uvicorn chatbot_app.main:app`) keep working during migration.
 
+## Citation
+
+If SciNanoAI helps your research, please cite the JCIM 2025 article that
+introduces the platform:
+
+> **Krotkov, N. A.; Sbytov, D. A.; Chakhoyan, A. A.; Kornienko, P. I.;
+> Starikova, A. A.; Stepanov, M. G.; Piven, A. O.; Aliev, T. A.; Orlova, T.;
+> Rafayelyan, M. S.; Skorb, E. V.**
+> *Nanostructured Material Design via a Retrieval-Augmented Generation (RAG)
+> Approach: Bridging Laboratory Practice and Scientific Literature.*
+> **Journal of Chemical Information and Modeling**, 2025 — special issue
+> "Machine Learning in Materials Science".
+> DOI: [10.1021/acs.jcim.5c01897](https://doi.org/10.1021/acs.jcim.5c01897).
+
+<details>
+<summary>BibTeX</summary>
+
+```bibtex
+@article{krotkov2025scinanoai,
+  title   = {Nanostructured Material Design via a Retrieval-Augmented
+             Generation (RAG) Approach: Bridging Laboratory Practice and
+             Scientific Literature},
+  author  = {Krotkov, Nikita A. and Sbytov, Dmitrii A. and
+             Chakhoyan, Anna A. and Kornienko, Polina I. and
+             Starikova, Anna A. and Stepanov, Maxim G. and
+             Piven, Anastasiia O. and Aliev, Timur A. and Orlova, Tetiana and
+             Rafayelyan, Mushegh S. and Skorb, Ekaterina V.},
+  journal = {Journal of Chemical Information and Modeling},
+  year    = {2025},
+  note    = {Special issue ``Machine Learning in Materials Science''},
+  doi     = {10.1021/acs.jcim.5c01897},
+  url     = {https://doi.org/10.1021/acs.jcim.5c01897},
+  publisher = {American Chemical Society}
+}
+```
+</details>
+
+The machine-readable [`CITATION.cff`](CITATION.cff) ships the same metadata for
+GitHub's "Cite this repository" button. The Cellpose extension on this branch
+will be added as a second entry once the follow-up paper is out.
+
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE) — © the SciNanoAI authors. The published article is © American
+Chemical Society and distributed under ACS publication terms.
