@@ -12,10 +12,13 @@ services:
       - ./db:/app/db:ro
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx,sys; sys.exit(0 if httpx.get('http://127.0.0.1:8000/health', timeout=3.0).status_code == 200 else 1)"]
-      interval: 30s
+      interval: 15s
       timeout: 5s
-      retries: 3
-      start_period: 60s
+      retries: 5
+      # On first run we need to download intfloat/multilingual-e5-large
+      # (~2 GB) from Hugging Face Hub before /health responds. Override via
+      # the VECTOR_START_PERIOD env-var if your network is even slower.
+      start_period: 900s
     restart: unless-stopped
     networks:
       - scinanoai_net
@@ -39,10 +42,13 @@ services:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import httpx,sys; sys.exit(0 if httpx.get('http://127.0.0.1:8001/health', timeout=3.0).status_code == 200 else 1)"]
-      interval: 30s
+      interval: 15s
       timeout: 5s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      # The DecomposerAgent loads a zero-shot classifier (mDeBERTa, ~700 MB)
+      # eagerly inside the FastAPI lifespan — that's a first-run download
+      # over the same HF Hub.
+      start_period: 600s
     restart: unless-stopped
     networks:
       - scinanoai_net
