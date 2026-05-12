@@ -69,6 +69,31 @@ uv sync --extra data                                 # for S3 + Excel + PDF inge
 uv run pre-commit install
 ```
 
+### Fast iteration with Docker (dev overlay)
+
+For development you don't want to rebuild a clean image each time you change
+a Python file. Use the dev overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+It does three things:
+
+1. Stops the build at the `builder` stage (no separate runtime image).
+2. Bind-mounts `./src`, `./pyproject.toml`, `./uv.lock` into each
+   container, and runs `uvicorn --reload`. Editing code on the host is
+   instantly reflected — no rebuild.
+3. Pins `/app/.venv` to a named volume per service (`vector_venv`,
+   `chatbot_venv`). The first run copies the image-built venv into the
+   volume; from then on `uv sync --frozen` is a no-op (~1 s) on startup.
+
+> **Why this isn't just `volumes: ./.venv:/app/.venv`:** the host `.venv`
+> contains `darwin-arm64` wheels (numpy, torch, faiss-cpu, sentence-
+> transformers, …). They can't load in a Linux container. The dev overlay
+> keeps the convenience of a persistent venv but builds it with the
+> correct `linux-*` wheels inside the named volume.
+
 ### Run the services without Docker
 
 ```bash
