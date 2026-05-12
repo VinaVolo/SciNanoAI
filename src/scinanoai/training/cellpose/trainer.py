@@ -4,7 +4,7 @@ import random
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,8 +21,8 @@ class TrainingResult:
     model_path: Path
     train_losses: np.ndarray
     test_losses: np.ndarray
-    metrics_history: Dict[str, np.ndarray]
-    loss_components: Dict[str, np.ndarray]
+    metrics_history: dict[str, np.ndarray]
+    loss_components: dict[str, np.ndarray]
 
 
 class CellposeTrainer:
@@ -54,7 +54,9 @@ class CellposeTrainer:
         if self.config.pretrained_model is None:
             self.model = models.CellposeModel(gpu=use_gpu)
         else:
-            self.model = models.CellposeModel(gpu=use_gpu, pretrained_model=self.config.pretrained_model)
+            self.model = models.CellposeModel(
+                gpu=use_gpu, pretrained_model=self.config.pretrained_model
+            )
         self.net = self.model.net
         self.device = self.net.device
 
@@ -117,7 +119,9 @@ class CellposeTrainer:
             if data is None:
                 lbls = None
                 imgs = [io.imread(files[i]) for i in inds]
-                imgs = train._reshape_norm(imgs, channel_axis=channel_axis, normalize_params=normalize_params)
+                imgs = train._reshape_norm(
+                    imgs, channel_axis=channel_axis, normalize_params=normalize_params
+                )
                 if labels_files is not None:
                     raw_lbls = [io.imread(labels_files[i]) for i in inds]
                     lbls = [ensure_flows(lbl, labels_files[i]) for lbl, i in zip(raw_lbls, inds)]
@@ -189,27 +193,39 @@ class CellposeTrainer:
             normed,
         ) = out
 
-        get_batch_kwargs = {} if normed else {"normalize_params": normalize_params, "channel_axis": cfg.channel_axis}
+        get_batch_kwargs = (
+            {}
+            if normed
+            else {"normalize_params": normalize_params, "channel_axis": cfg.channel_axis}
+        )
         self.net.diam_labels.data = torch.Tensor([diam_train.mean()]).to(self.device)
 
         if cfg.class_weights is not None:
-            self._class_weights = torch.as_tensor(cfg.class_weights, dtype=torch.float32, device=self.device)
+            self._class_weights = torch.as_tensor(
+                cfg.class_weights, dtype=torch.float32, device=self.device
+            )
 
         nimg = len(train_data) if train_data is not None else len(train_files)
         nimg_test = len(test_data) if test_data is not None else len(test_files)
         if train_probs is None:
             train_probs = np.ones(nimg, dtype=np.float32) / float(nimg)
         nimg_per_epoch = nimg if cfg.nimg_per_epoch is None else cfg.nimg_per_epoch
-        nimg_test_per_epoch = nimg_test if cfg.nimg_test_per_epoch is None else cfg.nimg_test_per_epoch
+        nimg_test_per_epoch = (
+            nimg_test if cfg.nimg_test_per_epoch is None else cfg.nimg_test_per_epoch
+        )
 
         lr_schedule = self._build_lr_schedule(cfg.n_epochs, cfg.learning_rate)
-        train.train_logger.info(">>> n_epochs=%d, n_train=%d, n_test=%s", cfg.n_epochs, nimg, nimg_test)
+        train.train_logger.info(
+            ">>> n_epochs=%d, n_train=%d, n_test=%s", cfg.n_epochs, nimg, nimg_test
+        )
         train.train_logger.info(
             ">>> AdamW, learning_rate=%0.5f, weight_decay=%0.5f",
             cfg.learning_rate,
             cfg.weight_decay,
         )
-        optimizer = torch.optim.AdamW(self.net.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay)
+        optimizer = torch.optim.AdamW(
+            self.net.parameters(), lr=cfg.learning_rate, weight_decay=cfg.weight_decay
+        )
 
         t0 = time.time()
         model_dir = cfg.model_dir
@@ -264,7 +280,11 @@ class CellposeTrainer:
                     **get_batch_kwargs,
                 )
                 diams = np.array([diam_train[i] for i in inds])
-                rsc = diams / self.net.diam_mean.item() if cfg.rescale else np.ones(len(diams), "float32")
+                rsc = (
+                    diams / self.net.diam_mean.item()
+                    if cfg.rescale
+                    else np.ones(len(diams), "float32")
+                )
                 imgi, lbl = train.random_rotate_and_resize(
                     imgs, Y=lbls, rescale=rsc, scale_range=scale_range, xy=(cfg.bsize, cfg.bsize)
                 )[:2]
@@ -379,7 +399,11 @@ class CellposeTrainer:
             )
 
             if iepoch == cfg.n_epochs - 1 or (iepoch % cfg.save_every == 0 and iepoch != 0):
-                filename0 = filename if not cfg.save_each or iepoch == cfg.n_epochs - 1 else model_dir / f"weights_epoch_{iepoch:04d}.pth"
+                filename0 = (
+                    filename
+                    if not cfg.save_each or iepoch == cfg.n_epochs - 1
+                    else model_dir / f"weights_epoch_{iepoch:04d}.pth"
+                )
                 train.train_logger.info("saving network parameters to %s", filename0)
                 self.net.save_model(filename0)
 
@@ -408,7 +432,12 @@ class CellposeTrainer:
             criterion3 = torch.nn.CrossEntropyLoss(reduction="mean", weight=self._class_weights)
             loss_cls = criterion3(y[:, :-3], lbl[:, 0].long())
         total_loss = loss_flow + loss_prob + (loss_cls if loss_cls is not None else 0.0)
-        return total_loss, loss_flow.item(), loss_prob.item(), (loss_cls.item() if loss_cls is not None else 0.0)
+        return (
+            total_loss,
+            loss_flow.item(),
+            loss_prob.item(),
+            (loss_cls.item() if loss_cls is not None else 0.0),
+        )
 
     def _evaluate_validation(
         self,
@@ -495,11 +524,15 @@ class CellposeTrainer:
 
             for idx in eval_indices:
                 img = io.imread(test_files[idx])
-                gt_mask_raw = io.imread(test_labels_files[idx]) if test_labels_files is not None else None
+                gt_mask_raw = (
+                    io.imread(test_labels_files[idx]) if test_labels_files is not None else None
+                )
                 gt_mask = None
                 if gt_mask_raw is not None:
                     if gt_mask_raw.ndim > 2:
-                        gt_mask = gt_mask_raw[0] if gt_mask_raw.shape[0] > 1 else gt_mask_raw.squeeze()
+                        gt_mask = (
+                            gt_mask_raw[0] if gt_mask_raw.shape[0] > 1 else gt_mask_raw.squeeze()
+                        )
                     else:
                         gt_mask = gt_mask_raw
                 masks_pred, flows_pred, _ = model_for_eval.eval(
@@ -513,13 +546,18 @@ class CellposeTrainer:
                 )
                 if isinstance(masks_pred, list):
                     masks_pred = masks_pred[0]
-                if isinstance(flows_pred, list) and len(flows_pred) > 0 and isinstance(flows_pred[0], list):
+                if (
+                    isinstance(flows_pred, list)
+                    and len(flows_pred) > 0
+                    and isinstance(flows_pred[0], list)
+                ):
                     flows_pred = flows_pred[0]
                 cellprob_map = None
                 if isinstance(flows_pred, list) and len(flows_pred) >= 3:
                     cellprob_map = flows_pred[2]
                 boxes_pred, scores_pred, inst_masks_pred = InstanceMetrics.mask_to_instances(
-                    masks_pred if isinstance(masks_pred, np.ndarray) else None, score_map=cellprob_map
+                    masks_pred if isinstance(masks_pred, np.ndarray) else None,
+                    score_map=cellprob_map,
                 )
                 boxes_gt, _, inst_masks_gt = InstanceMetrics.mask_to_instances(
                     gt_mask if gt_mask is not None else None, score_map=None
@@ -552,7 +590,11 @@ class CellposeTrainer:
                 pred_boxes_all, pred_scores_all, gt_boxes_all, thresholds, InstanceMetrics.boxes_iou
             )
             mask_precision, mask_recall, mask_map50, mask_map5095 = InstanceMetrics.evaluate_map(
-                pred_masks_all, pred_mask_scores_all, gt_masks_all, thresholds, InstanceMetrics.mask_iou
+                pred_masks_all,
+                pred_mask_scores_all,
+                gt_masks_all,
+                thresholds,
+                InstanceMetrics.mask_iou,
             )
             metrics_out = {
                 "box_precision": box_precision,
@@ -573,8 +615,8 @@ class CellposeTrainer:
         current_epoch: int,
         train_losses: np.ndarray,
         test_losses: np.ndarray,
-        loss_components: Dict[str, np.ndarray],
-        metrics_history: Dict[str, np.ndarray],
+        loss_components: dict[str, np.ndarray],
+        metrics_history: dict[str, np.ndarray],
         log_dir: Path,
     ) -> None:
         ep_range = np.arange(current_epoch + 1)
@@ -582,30 +624,60 @@ class CellposeTrainer:
 
         axes[0].plot(ep_range, train_losses[: current_epoch + 1], label="train total")
         axes[0].plot(ep_range, test_losses[: current_epoch + 1], label="val total")
-        axes[0].plot(ep_range, loss_components["train_flow"][: current_epoch + 1], "--", label="train flow")
-        axes[0].plot(ep_range, loss_components["train_prob"][: current_epoch + 1], "--", label="train prob")
-        axes[0].plot(ep_range, loss_components["train_cls"][: current_epoch + 1], "--", label="train cls")
-        axes[0].plot(ep_range, loss_components["test_flow"][: current_epoch + 1], ":", label="val flow")
-        axes[0].plot(ep_range, loss_components["test_prob"][: current_epoch + 1], ":", label="val prob")
-        axes[0].plot(ep_range, loss_components["test_cls"][: current_epoch + 1], ":", label="val cls")
+        axes[0].plot(
+            ep_range, loss_components["train_flow"][: current_epoch + 1], "--", label="train flow"
+        )
+        axes[0].plot(
+            ep_range, loss_components["train_prob"][: current_epoch + 1], "--", label="train prob"
+        )
+        axes[0].plot(
+            ep_range, loss_components["train_cls"][: current_epoch + 1], "--", label="train cls"
+        )
+        axes[0].plot(
+            ep_range, loss_components["test_flow"][: current_epoch + 1], ":", label="val flow"
+        )
+        axes[0].plot(
+            ep_range, loss_components["test_prob"][: current_epoch + 1], ":", label="val prob"
+        )
+        axes[0].plot(
+            ep_range, loss_components["test_cls"][: current_epoch + 1], ":", label="val cls"
+        )
         axes[0].set_title("Loss components")
         axes[0].set_xlabel("Epoch")
         axes[0].grid(True)
         axes[0].legend()
 
-        axes[1].plot(ep_range, metrics_history["box_precision"][: current_epoch + 1], label="Precision (Box)")
-        axes[1].plot(ep_range, metrics_history["box_recall"][: current_epoch + 1], label="Recall (Box)")
-        axes[1].plot(ep_range, metrics_history["box_map50"][: current_epoch + 1], label="mAP50 (Box)")
-        axes[1].plot(ep_range, metrics_history["box_map5095"][: current_epoch + 1], label="mAP50-95 (Box)")
+        axes[1].plot(
+            ep_range, metrics_history["box_precision"][: current_epoch + 1], label="Precision (Box)"
+        )
+        axes[1].plot(
+            ep_range, metrics_history["box_recall"][: current_epoch + 1], label="Recall (Box)"
+        )
+        axes[1].plot(
+            ep_range, metrics_history["box_map50"][: current_epoch + 1], label="mAP50 (Box)"
+        )
+        axes[1].plot(
+            ep_range, metrics_history["box_map5095"][: current_epoch + 1], label="mAP50-95 (Box)"
+        )
         axes[1].set_title("Detection (boxes)")
         axes[1].set_xlabel("Epoch")
         axes[1].grid(True)
         axes[1].legend()
 
-        axes[2].plot(ep_range, metrics_history["mask_precision"][: current_epoch + 1], label="Precision (Mask)")
-        axes[2].plot(ep_range, metrics_history["mask_recall"][: current_epoch + 1], label="Recall (Mask)")
-        axes[2].plot(ep_range, metrics_history["mask_map50"][: current_epoch + 1], label="mAP50 (Mask)")
-        axes[2].plot(ep_range, metrics_history["mask_map5095"][: current_epoch + 1], label="mAP50-95 (Mask)")
+        axes[2].plot(
+            ep_range,
+            metrics_history["mask_precision"][: current_epoch + 1],
+            label="Precision (Mask)",
+        )
+        axes[2].plot(
+            ep_range, metrics_history["mask_recall"][: current_epoch + 1], label="Recall (Mask)"
+        )
+        axes[2].plot(
+            ep_range, metrics_history["mask_map50"][: current_epoch + 1], label="mAP50 (Mask)"
+        )
+        axes[2].plot(
+            ep_range, metrics_history["mask_map5095"][: current_epoch + 1], label="mAP50-95 (Mask)"
+        )
         axes[2].set_title("Segmentation (masks)")
         axes[2].set_xlabel("Epoch")
         axes[2].grid(True)

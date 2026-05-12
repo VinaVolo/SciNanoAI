@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, status
@@ -83,7 +82,7 @@ async def query(request: QueryRequest) -> QueryResponse:
         docs = repo.query(request.query, k=k, fetch_k=fetch_k, lambda_mult=request.lambda_mult)
     except RuntimeError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _LOG.exception("Vector query failed: %s", exc)
         raise HTTPException(status_code=500, detail="Vector query failed") from exc
 

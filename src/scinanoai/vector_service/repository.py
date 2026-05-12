@@ -20,7 +20,7 @@ class IndexManifest:
         return json.dumps({"embedding_model": self.embedding_model, "dimension": self.dimension})
 
     @classmethod
-    def load(cls, path: Path) -> "IndexManifest | None":
+    def load(cls, path: Path) -> IndexManifest | None:
         if not path.exists():
             return None
         data = json.loads(path.read_text(encoding="utf-8"))

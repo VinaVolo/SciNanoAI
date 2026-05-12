@@ -81,9 +81,7 @@ class ChatService:
         if decision.image_mode is ImageMode.IMAGE_ANALYSIS:
             reply = self._answer_with_images(question, images)
         else:
-            reply = self._answer_with_text(
-                question, images=images, route=decision
-            )
+            reply = self._answer_with_text(question, images=images, route=decision)
 
         history.append(LLMMessage(role="assistant", content=reply))
         snapshot = [ChatMessage(role=m.role, content=m.content) for m in history.snapshot()]
@@ -97,8 +95,7 @@ class ChatService:
         if route.use_database:
             docs = self._vector.query(question)
             context_parts = [
-                f"{d.content} [{d.metadata.get('filename', 'unknown_file')}]"
-                for d in docs
+                f"{d.content} [{d.metadata.get('filename', 'unknown_file')}]" for d in docs
             ]
             context = "\n\n".join(context_parts) or "(no documents retrieved)"
             prompt = render_rag_prompt(context=context, question=question)
@@ -136,9 +133,13 @@ class ChatService:
         if attempt >= _MAX_REFORMULATIONS or self._local is None:
             return reply
         if self._is_insufficient(reply, question):
-            _LOG.info("Reply judged insufficient; reformulating question (attempt=%d).", attempt + 1)
+            _LOG.info(
+                "Reply judged insufficient; reformulating question (attempt=%d).", attempt + 1
+            )
             new_question = self._reformulate(question)
-            return self._invoke_with_followup(new_question, render_plain_prompt(new_question), attempt + 1)
+            return self._invoke_with_followup(
+                new_question, render_plain_prompt(new_question), attempt + 1
+            )
         return reply
 
     def _build_messages(self, prompt: str) -> list[LLMMessage]:

@@ -44,37 +44,38 @@ healthy before starting.
 
 ## Local development
 
-Requires Python 3.11 (the project intentionally pins `<3.13` while waiting for torch / langchain /
-sentence-transformers to fully support 3.13).
+This project uses **[uv](https://docs.astral.sh/uv/)** as the package manager.
+Python 3.11 is pinned via `.python-version` (the project intentionally targets `<3.13` while
+torch / langchain / sentence-transformers stabilise on 3.13).
 
 ```bash
-# Install with the extras you need
-pip install -e ".[chatbot,vector,dev]"      # to run the services + tests
-pip install -e ".[ml,dev]"                  # to train Cellpose
-pip install -e ".[data]"                    # for S3 + Excel + PDF ingest
+# uv installs the right Python and resolves from uv.lock
+uv sync --extra chatbot --extra vector --extra dev   # services + tests
+uv sync --extra ml --extra dev                       # to train Cellpose
+uv sync --extra data                                 # for S3 + Excel + PDF ingest
 
 # Pre-commit (ruff, gitleaks, mypy, etc.)
-pre-commit install
+uv run pre-commit install
 ```
 
 ### Run the services without Docker
 
 ```bash
 # Terminal 1
-uvicorn scinanoai.vector_service.api:app --host 0.0.0.0 --port 8000
+uv run uvicorn scinanoai.vector_service.api:app --host 0.0.0.0 --port 8000
 
 # Terminal 2
-uvicorn scinanoai.chatbot.api:app --host 0.0.0.0 --port 8001
+uv run uvicorn scinanoai.chatbot.api:app --host 0.0.0.0 --port 8001
 
 # Terminal 3
-python -m scinanoai.chatbot.ui
+uv run python -m scinanoai.chatbot.ui
 ```
 
 ### Tests
 
 ```bash
-pytest -m unit                 # fast, no external services
-pytest                         # all tests (some need a FAISS index + ML models)
+uv run pytest -m unit          # fast, no external services
+uv run pytest                  # all tests (some need a FAISS index + ML models)
 ```
 
 ## Data pipelines
@@ -150,8 +151,9 @@ tests/{unit,integration}/       # pytest suites
 
 Compared to the pre-refactor layout:
 
-- `requirements.txt`, `chatbot_app/requirements.txt`, `vector_service/requirements.txt`, `uv.lock` are
-  replaced by a single `pyproject.toml` with extras (`chatbot`, `vector`, `ml`, `data`, `dev`).
+- Three `requirements.txt` files are replaced by a single `pyproject.toml` with extras
+  (`chatbot`, `vector`, `ml`, `data`, `dev`). `uv.lock` is regenerated from the new schema and
+  committed — install with `uv sync`, not `pip install -r`.
 - `chatbot_app/chatbot.py` (718-line god class) → 17 focused modules under `src/scinanoai/chatbot/`.
 - `download_data.py` / `download_db.py` / `upload_data.py` → unified `scinanoai-s3` CLI.
 - Two `train_cellpose.py` entrypoints (root + `src/train/`) → single YAML-driven CLI.

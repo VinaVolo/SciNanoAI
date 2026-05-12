@@ -23,7 +23,7 @@ def test_limit_to_budget_drops_oldest() -> None:
     messages = [LLMMessage(role="user", content="x" * 50) for _ in range(5)]
     limited = history.limit_to_budget(messages, budget=20)
     assert len(limited) <= len(messages)
-    assert limited == messages[-len(limited):]
+    assert limited == messages[-len(limited) :]
 
 
 @pytest.mark.unit

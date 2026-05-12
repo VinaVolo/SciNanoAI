@@ -16,7 +16,7 @@ _LOG = logging.getLogger(__name__)
 _DEFAULT_ENCODING = "cl100k_base"
 
 
-def _resolve_encoding(model: str) -> "tiktoken.Encoding":
+def _resolve_encoding(model: str) -> tiktoken.Encoding:
     try:
         return tiktoken.encoding_for_model(model)
     except KeyError:
@@ -57,7 +57,9 @@ class ConversationHistory:
         target = messages if messages is not None else self.snapshot()
         return sum(len(self._encoding.encode(m.content)) for m in target)
 
-    def limit_to_budget(self, messages: list[LLMMessage], budget: int | None = None) -> list[LLMMessage]:
+    def limit_to_budget(
+        self, messages: list[LLMMessage], budget: int | None = None
+    ) -> list[LLMMessage]:
         """Drop oldest messages until the running total fits ``budget`` tokens."""
         budget = budget if budget is not None else self._budget
         total = 0
@@ -84,7 +86,9 @@ class ConversationHistory:
         _LOG.info("History summarised: kept %d recent messages.", len(recent))
         with self._lock:
             self._messages = [
-                LLMMessage(role="system", content=f"Summary of the previous conversation: {summary}"),
+                LLMMessage(
+                    role="system", content=f"Summary of the previous conversation: {summary}"
+                ),
                 *recent,
             ]
 

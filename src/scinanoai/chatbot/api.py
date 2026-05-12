@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
@@ -39,7 +38,7 @@ async def chat_endpoint(request: ChatRequest) -> ChatResponse:
         )
     except RuntimeError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _LOG.exception("Chat request failed: %s", exc)
         raise HTTPException(status_code=500, detail="Internal error") from exc
     return ChatResponse(reply=reply, conversation_history=history)

@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import logging
 from pathlib import Path
 
 from langchain_community.vectorstores import FAISS
@@ -37,10 +36,13 @@ def _iter_documents(parsed_pages_dir: Path):
             text = (page.get("text") or "").strip() if isinstance(page, dict) else ""
             if not text:
                 continue
-            yield text, {
-                "filename": path.name,
-                "page": page_idx,
-            }
+            yield (
+                text,
+                {
+                    "filename": path.name,
+                    "page": page_idx,
+                },
+            )
 
 
 def build_index(

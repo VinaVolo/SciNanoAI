@@ -5,10 +5,10 @@ from __future__ import annotations
 import base64
 import logging
 import math
+from collections.abc import Iterable
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -53,16 +53,15 @@ class ImageAnalyzer:
             _LOG.warning("Cellpose model not available; using stub segmentation.")
             return None
         try:
-            from cellpose import models as cellpose_models
-
             import torch
+            from cellpose import models as cellpose_models
 
             use_gpu = torch.cuda.is_available()
             model = cellpose_models.CellposeModel(gpu=use_gpu, pretrained_model=str(path))
             device = torch.cuda.get_device_name(0) if use_gpu else "CPU"
             _LOG.info("Cellpose model loaded from %s on %s", path, device)
             return model
-        except Exception as exc:  # noqa: BLE001 — model load is best-effort
+        except Exception as exc:
             _LOG.error("Failed to load Cellpose model: %s", exc)
             return None
 
@@ -84,10 +83,12 @@ class ImageAnalyzer:
                             ),
                         )
                     )
-            except Exception as exc:  # noqa: BLE001 — never break the pipeline
+            except Exception as exc:
                 _LOG.error("Failed to describe image %d: %s", idx, exc)
                 descriptions.append(
-                    ImageDescription(index=idx, text=f"Изображение {idx}: ошибка обработки ({exc}).")
+                    ImageDescription(
+                        index=idx, text=f"Изображение {idx}: ошибка обработки ({exc})."
+                    )
                 )
         return descriptions
 
@@ -102,15 +103,11 @@ class ImageAnalyzer:
                     classification = self._classify_color(img)
                     segments = self._segment(img)
                 if not segments:
-                    records.append(
-                        self._record(idx, name, classification, area=0.0, radius=0.0)
-                    )
+                    records.append(self._record(idx, name, classification, area=0.0, radius=0.0))
                 else:
                     for seg in segments:
-                        records.append(
-                            self._record(idx, name, classification, **seg)
-                        )
-            except Exception as exc:  # noqa: BLE001 — per-image isolation
+                        records.append(self._record(idx, name, classification, **seg))
+            except Exception as exc:
                 msg = f"Изображение {idx}: не удалось обработать ({exc})."
                 errors.append(msg)
                 _LOG.error(msg)
@@ -189,7 +186,7 @@ class ImageAnalyzer:
                         }
                     )
                 return entries
-            except Exception as exc:  # noqa: BLE001 — fallback to stub
+            except Exception as exc:
                 _LOG.error("Cellpose segmentation failed: %s", exc)
 
         arr_gray = np.array(img.convert("L")).astype(float)
@@ -206,7 +203,9 @@ class ImageAnalyzer:
         ]
 
     @staticmethod
-    def _remove_outliers(df: pd.DataFrame, value_col: str, group_col: str = "material_name") -> pd.DataFrame:
+    def _remove_outliers(
+        df: pd.DataFrame, value_col: str, group_col: str = "material_name"
+    ) -> pd.DataFrame:
         cleaned_parts = []
         for _name, group in df.groupby(group_col):
             q1 = group[value_col].quantile(0.25)

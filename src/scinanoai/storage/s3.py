@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterator
 
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
@@ -50,8 +50,12 @@ class S3Client:
             aws_access_key_id=self._config.access_key,
             aws_secret_access_key=self._config.secret_key,
         )
-        boto_cfg = BotoConfig(signature_version="s3v4", retries={"max_attempts": 5, "mode": "standard"})
-        self._resource = session.resource("s3", endpoint_url=self._config.endpoint_url, config=boto_cfg)
+        boto_cfg = BotoConfig(
+            signature_version="s3v4", retries={"max_attempts": 5, "mode": "standard"}
+        )
+        self._resource = session.resource(
+            "s3", endpoint_url=self._config.endpoint_url, config=boto_cfg
+        )
         self._client = session.client("s3", endpoint_url=self._config.endpoint_url, config=boto_cfg)
         self._bucket = self._resource.Bucket(self._config.bucket)
 

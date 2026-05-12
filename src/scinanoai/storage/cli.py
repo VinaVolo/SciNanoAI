@@ -39,11 +39,15 @@ def main(argv: list[str] | None = None) -> None:
 
     args = parser.parse_args(argv)
 
-    config = S3Config(
-        bucket=args.bucket or "",
-        access_key="__unused__",
-        secret_key="__unused__",
-    ) if args.bucket else None
+    config = (
+        S3Config(
+            bucket=args.bucket or "",
+            access_key="__unused__",
+            secret_key="__unused__",
+        )
+        if args.bucket
+        else None
+    )
 
     if args.command == "download":
         client = S3Client() if config is None else S3Client(config)

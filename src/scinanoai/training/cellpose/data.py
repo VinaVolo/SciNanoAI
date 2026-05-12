@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional
 
 
 @dataclass(frozen=True)
@@ -105,4 +106,3 @@ class MaskDatasetBuilder:
             if suffix and not path.name.endswith(suffix):
                 continue
             yield path
-

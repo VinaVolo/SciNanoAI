@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import logging
 from pathlib import Path
 
 from ...utils.logging import setup_logging

@@ -112,10 +112,25 @@ exclude = ["notebooks", ".venv", "data", "db", "models"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "PL", "RUF", "TID"]
-ignore = ["PLR0913", "PLR2004", "E501"]
+ignore = [
+    "PLR0913",  # too many arguments (DI constructors legitimately have many)
+    "PLR0911",  # too many return statements (early-return routers)
+    "PLR2004",  # magic numbers (tuning constants)
+    "PLC0415",  # imports inside functions (lazy ML imports are intentional)
+    "E501",     # line length — handled by formatter
+    "B008",     # function call in default (FastAPI Depends)
+    "UP045",    # PEP 604 unions in older 3.10 syntax (we target 3.11+)
+    "RUF002",   # ambiguous Cyrillic — prompt strings are Russian on purpose
+    "RUF003",
+    "TID252",   # relative parent imports within the package are fine
+]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["PLR2004", "S101"]
+"tests/**" = ["PLR2004", "S101", "PLC0415"]
+"src/scinanoai/training/cellpose/trainer.py" = ["PL", "B", "RUF", "SIM", "UP"]  # legacy
+"src/scinanoai/training/cellpose/metrics.py" = ["PL", "UP", "B"]
+"src/scinanoai/chatbot/core/router.py" = ["UP042"]
+"src/scinanoai/chatbot/services/decomposer.py" = ["SIM103"]
 
 [tool.mypy]
 python_version = "3.11"
