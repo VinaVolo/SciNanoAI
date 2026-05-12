@@ -19,5 +19,4 @@ docs
 .mypy_cache
 .ruff_cache
 node_modules
-README.md
 docker-compose.yml

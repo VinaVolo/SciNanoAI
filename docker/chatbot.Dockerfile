@@ -20,9 +20,9 @@ RUN --mount=type=cache,target=/root/.cache/uv \
 
 COPY src ./src
 COPY configs ./configs
-# LICENSE is referenced by pyproject.toml (license = { file = "LICENSE" })
-# and validated by hatchling at build time.
-COPY LICENSE ./
+# pyproject.toml declares `license = { file = "LICENSE" }` and
+# `readme = "README.md"`; hatchling validates both at build time.
+COPY LICENSE README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --extra chatbot
 
