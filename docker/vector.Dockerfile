@@ -31,7 +31,8 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PATH="/app/.venv/bin:$PATH" \
     SCINANO_LOG_LEVEL=INFO
 
-RUN useradd --create-home --shell /bin/bash --uid 10001 appuser
+RUN useradd --create-home --shell /bin/bash --uid 10001 appuser \
+ && install -d -o appuser -g appuser -m 0755 /home/appuser/.cache/huggingface
 
 WORKDIR /app
 
