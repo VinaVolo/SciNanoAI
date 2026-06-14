@@ -122,18 +122,26 @@ celerybeat.pid
 *.sage.py
 
 # Skip data
-data/
+/data
 db/
 .csv
 
 # Environments
 .env
+.env.*
+!.env.example
+.env_copy
 .venv
 env/
 venv/
 ENV/
 env.bak/
 venv.bak/
+loggers_everything.log
+*.log
+runs/
+checkpoints/
+.dockerignore.bak
 
 # Spyder project settings
 .spyderproject
@@ -166,4 +174,9 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
+*.zip
 chatbot_app/.gradio/
+/models
+
+# macOS
+.DS_Store

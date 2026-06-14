@@ -1,164 +1,210 @@
 <h1 align="center">SciNanoAI</h1>
 
 <p align="center">
-  <b>A retrieval-augmented chatbot for nanostructured-material design.</b><br>
-  Reference implementation of the <i>Journal of Chemical Information and Modeling</i> (2025) study by Krotkov <i>et&nbsp;al.</i>
+  Scientific RAG chatbot and image-analysis pipeline for nano-structure research.
+</p>
+
+<p align="center">
+  <a href="docs/architecture.md">Architecture</a> ·
+  <a href="docs/adr">Decision Records</a> ·
+  <a href=".env.example">Environment template</a> ·
+  <a href="#citation">Cite</a>
 </p>
 
 <p align="center">
   <a href="https://doi.org/10.1021/acs.jcim.5c01897"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.1021%2Facs.jcim.5c01897-B31B1B.svg"></a>
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
-  <a href="#citation"><img alt="Cite this work" src="https://img.shields.io/badge/cite-J.%20Chem.%20Inf.%20Model.%202025-orange.svg"></a>
 </p>
+
+<p align="center">
+  <img alt="SciNanoAI pipeline: scientific articles, patents and reviews are tagged (shapes, materials, sizes, cell type/properties), passed through an LLM, and resolved into structured nano-object descriptors (shapes, objects, materials, sizes)." src="docs/img/fig0.png" width="100%">
+</p>
+
+> The original RAG platform is described in **Krotkov *et&nbsp;al.*, *J. Chem. Inf. Model.* 2025**
+> ([doi:10.1021/acs.jcim.5c01897](https://doi.org/10.1021/acs.jcim.5c01897)).
+> The Cellpose-based image-analysis extension shipped on this branch is the subject
+> of a forthcoming follow-up publication.
 
 ---
 
-## About
+## Overview
 
-SciNanoAI is an **agent-based retrieval-augmented generation (RAG) platform** built around
-large language models (LLMs), aimed at materials scientists working on
-**nanostructured materials produced via two-photon polymerization (2PP)** and related
-techniques. The system extracts and synthesises information from a curated corpus of
-scientific literature and patent texts, and answers free-form questions in
-context — bridging day-to-day laboratory practice and the published literature.
+SciNanoAI bundles three cooperating services:
 
-The platform demonstrated, on the test set of the accompanying article:
+| Service          | Port | Code path                                | Purpose                                          |
+|------------------|------|------------------------------------------|--------------------------------------------------|
+| `vector_service` | 8000 | `scinanoai.vector_service.api:app`       | FAISS retrieval (MMR) over ~300 parsed papers    |
+| `chatbot_api`    | 8001 | `scinanoai.chatbot.api:app`              | RAG orchestration, LLM dispatch, Cellpose images |
+| `chatbot_ui`     | 8517 | `python -m scinanoai.chatbot.ui`         | Gradio frontend with basic auth                  |
 
-| Metric | Value |
-|---|---|
-| Semantic accuracy (cosine similarity) | **0.82** |
-| Overall task precision | **0.81** |
+LLM access runs through one OpenAI-compatible gateway (LiteLLM / OpenRouter / vLLM) set via `LLM_BASE_URL`; the gateway resolves `LLM_MODEL` to its real upstream (OpenRouter, YandexGPT, GigaChat, Ollama, ...).
 
-A dynamic query-refinement mechanism reduces hallucinations and misinformation typical
-of plain LLM chats, while keeping the interface friendly to non-CS researchers.
-
-The codebase shipped in this repository is the snapshot accompanying the publication.
-
-## Architecture
-
-Two cooperating microservices and a Gradio frontend:
-
-```
-            ┌──────────────────────┐
-            │   Gradio UI (8517)   │
-            │   chatbot_app/app.py │
-            └──────────┬───────────┘
-                       │
-                       ▼
-            ┌──────────────────────┐         ┌──────────────────────┐
-            │  Chat API (8001)     │────────▶│  Vector API (8000)   │
-            │  chatbot_app/main.py │  query  │  vector_service/     │
-            └──────────┬───────────┘         │  FAISS + e5-large    │
-                       │                     └──────────────────────┘
-                       ▼
-          ┌────────────────────────────┐
-          │ LLM providers (any of):    │
-          │  OpenAI / YandexGPT /      │
-          │  GigaChat (Sber)           │
-          └────────────────────────────┘
-```
-
-- `vector_service/` — FastAPI microservice wrapping a FAISS index built from
-  `intfloat/multilingual-e5-large` embeddings over **301 parsed documents**
-  (scientific articles + patents on nanostructured materials, 2PP, cell
-  responses to nanotopography).
-- `chatbot_app/` — FastAPI chat orchestrator + `decomposer_agent` that decides
-  whether a query needs the literature corpus or can be answered directly.
-- `notebooks/` — research notebooks used to build the document store and
-  evaluate metrics from the article.
-
-## Installation
+## Quick start (Docker)
 
 ```bash
 git clone git@github.com:VinaVolo/SciNanoAI.git
 cd SciNanoAI
-```
 
-### Python environment
+cp .env.example .env
+# Fill in: LLM_MODEL, LLM_BASE_URL, LLM_API_KEY, S3 keys, GRADIO_USERNAME/PASSWORD
 
-- **Linux / macOS:**
-  ```bash
-  python3 -m venv venv
-  source venv/bin/activate
-  pip install -r requirements.txt
-  ```
-- **Windows:**
-  ```powershell
-  python -m venv venv
-  .\venv\Scripts\activate
-  pip install -r requirements.txt
-  ```
-
-### Environment variables
-
-Copy `env-example` to `.env` and fill in the credentials of every LLM/data
-provider you plan to use:
-
-```bash
-S3_ACCESS_KEY=
-S3_SECRET_KEY=
-OPENAI_API_KEY=
-OPENAI_API_BASE=
-YANDEX_API_KEY=
-YANDEX_API_BASE=
-SBER_API_KEY=
-username=
-password=
-```
-
-### Fetch data and prebuilt index
-
-The full corpus and the prebuilt FAISS index live in an S3 bucket:
-
-```bash
-python download_data.py    # downloads data/  (parsed articles + reference table)
-python download_db.py      # downloads db/    (FAISS index)
-```
-
-## Running the stack
-
-```bash
-# Terminal 1 — vector service
-cd vector_service
-uvicorn main:app --host 0.0.0.0 --port 8000
-
-# Terminal 2 — chatbot API
-cd chatbot_app
-uvicorn main:app --host 0.0.0.0 --port 8001
-
-# Terminal 3 — Gradio UI
-cd chatbot_app
-python app.py
-```
-
-Open <http://localhost:8517/scinanoai> and log in with `username` /
-`password` from `.env`.
-
-A `docker-compose.yml` is also provided for one-command startup:
-
-```bash
 docker compose up --build
 ```
+
+Open <http://localhost:8517/scinanoai> — log in with `GRADIO_USERNAME` / `GRADIO_PASSWORD` from `.env`.
+
+The compose stack uses the multi-stage `docker/chatbot.Dockerfile` and `docker/vector.Dockerfile`. All
+containers run as non-root and ship a `HEALTHCHECK`; `chatbot_api` waits for `vector_service` to become
+healthy before starting.
+
+## Local development
+
+This project uses **[uv](https://docs.astral.sh/uv/)** as the package manager.
+Python 3.11 is pinned via `.python-version` (the project intentionally targets `<3.13` while
+torch / langchain / sentence-transformers stabilise on 3.13).
+
+```bash
+# uv installs the right Python and resolves from uv.lock
+uv sync --extra chatbot --extra vector --extra dev   # services + tests
+uv sync --extra ml --extra dev                       # to train Cellpose
+uv sync --extra data                                 # for S3 + Excel + PDF ingest
+
+# Pre-commit (ruff, gitleaks, mypy, etc.)
+uv run pre-commit install
+```
+
+### Fast iteration with Docker (dev overlay)
+
+For development you don't want to rebuild a clean image each time you change
+a Python file. Use the dev overlay:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+```
+
+It does three things:
+
+1. Stops the build at the `builder` stage (no separate runtime image).
+2. Bind-mounts `./src`, `./pyproject.toml`, `./uv.lock` into each
+   container, and runs `uvicorn --reload`. Editing code on the host is
+   instantly reflected — no rebuild.
+3. Pins `/app/.venv` to a named volume per service (`vector_venv`,
+   `chatbot_venv`). The first run copies the image-built venv into the
+   volume; from then on `uv sync --frozen` is a no-op (~1 s) on startup.
+
+> **Why this isn't just `volumes: ./.venv:/app/.venv`:** the host `.venv`
+> contains `darwin-arm64` wheels (numpy, torch, faiss-cpu, sentence-
+> transformers, …). They can't load in a Linux container. The dev overlay
+> keeps the convenience of a persistent venv but builds it with the
+> correct `linux-*` wheels inside the named volume.
+
+### Run the services without Docker
+
+```bash
+# Terminal 1
+uv run uvicorn scinanoai.vector_service.api:app --host 0.0.0.0 --port 8000
+
+# Terminal 2
+uv run uvicorn scinanoai.chatbot.api:app --host 0.0.0.0 --port 8001
+
+# Terminal 3
+uv run python -m scinanoai.chatbot.ui
+```
+
+### Tests
+
+```bash
+uv run pytest -m unit          # fast, no external services
+uv run pytest                  # all tests (some need a FAISS index + ML models)
+```
+
+## Data pipelines
+
+### Download data and index from S3
+
+```bash
+scinanoai-s3 download --prefix data/ --dest data/      # raw datasets
+scinanoai-s3 download --prefix db/   --dest db/        # FAISS index
+```
+
+Set `S3_BUCKET`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` in `.env`. The CLI is idempotent — already-present
+files are skipped by size.
+
+### Build / extend the FAISS index
+
+```bash
+# Full rebuild from parsed PDF pages
+scinanoai-ingest-pdf --parsed-pages data/parsed_pages --db-path db/intfloat_multilingual-e5-large
+
+# Append rows from the image-metrics Excel file
+scinanoai-ingest-excel --excel data/img_result_nn_radius_cyto_2.xlsx --db-path db/intfloat_multilingual-e5-large
+```
+
+The PDF builder writes `db/<index>/manifest.json` recording the embedding model + dimension. The vector
+service refuses to start if the manifest contradicts `VECTOR_EMBEDDING_MODEL` — see
+[ADR-0002](docs/adr/0002-vector-index-versioning.md).
+
+## Training (Cellpose)
+
+```bash
+scinanoai-train-cellpose --config configs/training/cellpose_default.yaml
+```
+
+A run manifest (path, config snapshot, metric keys) is written to `<output_dir>/<model_name>/logging/run_manifest.json`.
 
 ## Repository layout
 
 ```
-chatbot_app/                 RAG orchestrator + Gradio UI
-  ├── chatbot.py             ChatBot — query routing, LLM dispatch, references
-  ├── decomposer_agent.py    Zero-shot classifier (corpus vs. general LLM)
-  ├── main.py                FastAPI app (/chat, /clear_history)
-  └── app.py                 Gradio frontend
-vector_service/              FAISS retrieval microservice
-notebooks/                   Corpus building + evaluation (used in the article)
-src/utils/                   Project-path helpers
-download_data.py             Pull data/ from S3
-download_db.py               Pull db/  from S3
-upload_data.py               Push local data/ to S3
+src/scinanoai/                  # All Python sources live here
+  chatbot/                      # FastAPI + Gradio + LLM clients + RAG orchestrator
+    core/                       # history, prompts, router
+    llm/                        # one file per provider + factory
+    services/                   # vector client, decomposer, formality, image analysis, references
+  vector_service/               # FAISS retrieval microservice
+    ingest/                     # excel.py + pdf.py
+  training/cellpose/            # CellposeTrainer + data + metrics + CLI
+  training/yolo/                # YOLO segmentation training
+  data/                         # mask -> COCO, PDF parsing, renaming utilities
+  storage/                      # S3 client + unified CLI
+  utils/                        # logging, paths
+
+chatbot_app/                    # Thin backward-compat shims (will be removed once
+vector_service/                 # consumers migrate to scinanoai.* imports)
+
+configs/training/               # YAML training configs
+scripts/                        # CLI shims (train_cellpose.py)
+docker/                         # multi-stage Dockerfiles
+docs/                           # architecture.md + ADRs
+tests/{unit,integration}/       # pytest suites
 ```
+
+## Security
+
+- Secrets live in `.env` (gitignored). Use `.env.example` as the template.
+- `gitleaks` runs in pre-commit and CI.
+- The vector service supports `X-API-Key` auth (set `VECTOR_SERVICE_API_KEY` in `.env` to enable).
+- All containers run as non-root user `appuser` (UID 10001).
+- Request bodies are bounded via Pydantic schemas; per-image upload size is capped by the FastAPI body
+  limit configured on the chatbot service.
+
+## Migration notes
+
+Compared to the pre-refactor layout:
+
+- Three `requirements.txt` files are replaced by a single `pyproject.toml` with extras
+  (`chatbot`, `vector`, `ml`, `data`, `dev`). `uv.lock` is regenerated from the new schema and
+  committed — install with `uv sync`, not `pip install -r`.
+- `chatbot_app/chatbot.py` (718-line god class) → 17 focused modules under `src/scinanoai/chatbot/`.
+- `download_data.py` / `download_db.py` / `upload_data.py` → unified `scinanoai-s3` CLI.
+- Two `train_cellpose.py` entrypoints (root + `src/train/`) → single YAML-driven CLI.
+- `src/evalute/` (typo) and `paths copy.py` (literal space in filename) removed.
+- `chatbot_app/main.py` and `vector_service/main.py` remain as thin re-export shims so existing
+  process managers (`uvicorn chatbot_app.main:app`) keep working during migration.
 
 ## Citation
 
-If SciNanoAI helps your research, please cite the JCIM 2025 article:
+If SciNanoAI helps your research, please cite the JCIM 2025 article that
+introduces the platform:
 
 > **Krotkov, N. A.; Sbytov, D. A.; Chakhoyan, A. A.; Kornienko, P. I.;
 > Starikova, A. A.; Stepanov, M. G.; Piven, A. O.; Aliev, T. A.; Orlova, T.;
@@ -192,8 +238,9 @@ If SciNanoAI helps your research, please cite the JCIM 2025 article:
 ```
 </details>
 
-The repository also ships a [`CITATION.cff`](CITATION.cff) so GitHub's
-"Cite this repository" button renders the same metadata automatically.
+The machine-readable [`CITATION.cff`](CITATION.cff) ships the same metadata for
+GitHub's "Cite this repository" button. The Cellpose extension on this branch
+will be added as a second entry once the follow-up paper is out.
 
 ## License
 

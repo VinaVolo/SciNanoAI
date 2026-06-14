@@ -1,0 +1,97 @@
+# Dev overlay for fast iteration.
+#
+# Apply on top of docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+#
+# What this changes vs the production stack:
+#   - Builds stop at the `builder` stage (the runtime image is irrelevant here).
+#   - The whole src/ tree is bind-mounted into the container, so editing
+#     code on the host is reflected instantly; uvicorn runs with --reload.
+#   - The /app/.venv inside each service is backed by a named volume
+#     (vector_venv / chatbot_venv) so the Linux-side venv persists across
+#     `compose up` cycles. First run copies the image's prebuilt venv
+#     into the volume; subsequent runs hit `uv sync --frozen` which is a
+#     no-op when nothing in pyproject.toml / uv.lock changed.
+#   - Healthchecks disabled so you don't have to wait through the
+#     start_period grace window in iteration mode.
+#
+# Why not bind-mount ~/SciNanoAI/.venv directly:
+#   Your host .venv contains darwin-arm64 wheels (numpy, torch, faiss-cpu,
+#   sentence-transformers...). They can't load inside a Linux container.
+
+services:
+  vector_service:
+    build:
+      target: builder
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    environment:
+      - TORCH_VARIANT=${TORCH_VARIANT:-cpu}
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - vector_venv:/app/.venv
+    command:
+      - sh
+      - -c
+      - >
+        uv sync --frozen --extra vector --extra "${TORCH_VARIANT:-cpu}" &&
+        exec uv run uvicorn scinanoai.vector_service.api:app
+        --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
+    healthcheck:
+      disable: true
+
+  chatbot_api:
+    build:
+      target: builder
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    environment:
+      - TORCH_VARIANT=${TORCH_VARIANT:-cpu}
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - ./configs:/app/configs:ro
+      - chatbot_venv:/app/.venv
+    # The api waits for the vector service to be reachable rather than
+    # the healthcheck condition (which is disabled in dev).
+    depends_on:
+      vector_service:
+        condition: service_started
+    command:
+      - sh
+      - -c
+      - >
+        uv sync --frozen --extra chatbot --extra "${TORCH_VARIANT:-cpu}" &&
+        exec uv run uvicorn scinanoai.chatbot.api:app
+        --host 0.0.0.0 --port 8001 --reload --reload-dir /app/src
+    healthcheck:
+      disable: true
+
+  chatbot_ui:
+    build:
+      target: builder
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    environment:
+      - TORCH_VARIANT=${TORCH_VARIANT:-cpu}
+    volumes:
+      - ./src:/app/src
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./uv.lock:/app/uv.lock:ro
+      - chatbot_venv:/app/.venv
+    depends_on:
+      chatbot_api:
+        condition: service_started
+    command:
+      - sh
+      - -c
+      - >
+        uv sync --frozen --extra chatbot --extra "${TORCH_VARIANT:-cpu}" &&
+        exec uv run python -m scinanoai.chatbot.ui
+
+volumes:
+  vector_venv:
+  chatbot_venv:
