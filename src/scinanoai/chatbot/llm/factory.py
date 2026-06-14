@@ -1,34 +1,23 @@
-"""Factory selecting an LLM client by model name."""
+"""Factory building the LLM client for the OpenAI-compatible gateway."""
 
 from __future__ import annotations
 
 from ..settings import ChatbotSettings
 from .base import LLMClient
-from .gigachat_client import GigaChatClient
-from .ollama_client import OllamaChatClient
 from .openai_client import OpenAIChatClient
-from .yandex_client import YandexChatClient
 
 
 def get_client(settings: ChatbotSettings) -> LLMClient:
-    """Return a configured LLM client matching ``settings.llm_model``."""
-    model = settings.llm_model
+    """Return the LLM client pointed at the configured gateway.
 
-    if model == "YandexGPT4":
-        return YandexChatClient(
-            api_key=settings.yandex_api_key or "",
-            model_uri=settings.yandex_api_base or "",
-        )
-    if model == "GigaChat-Pro":
-        return GigaChatClient(credentials=settings.sber_api_key or "")
-    if model == "gpt-oss:latest" or settings.local_api_base:
-        return OllamaChatClient(
-            model="gpt-oss:latest" if model == "gpt-oss:latest" else model,
-            api_base=settings.local_api_base or "",
-            api_key=settings.local_api_key or "",
-        )
+    The whole bot runs through one OpenAI-compatible gateway (LiteLLM / OpenRouter /
+    vLLM); the gateway resolves ``llm_model`` to its real upstream, so there is a
+    single code path here and no model-name routing.
+    """
+    if not settings.llm_base_url:
+        raise ValueError("LLM_BASE_URL is required")
     return OpenAIChatClient(
-        model=model,
-        api_key=settings.openai_api_key or "",
-        base_url=settings.openai_api_base,
+        model=settings.llm_model,
+        api_key=settings.llm_api_key or "",
+        base_url=settings.llm_base_url,
     )

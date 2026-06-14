@@ -14,14 +14,12 @@ class ChatbotSettings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     # --- LLM
+    # A single OpenAI-compatible gateway (LiteLLM / OpenRouter / vLLM) is the only
+    # provider path. The gateway itself routes llm_model to the real upstream, so the
+    # bot needs just these three knobs. llm_base_url is validated in llm.factory.
     llm_model: str = Field(default="gpt-oss:latest")
-    openai_api_key: str | None = None
-    openai_api_base: str | None = None
-    yandex_api_key: str | None = None
-    yandex_api_base: str | None = None
-    sber_api_key: str | None = None
-    local_api_key: str | None = None
-    local_api_base: str | None = None
+    llm_base_url: str | None = None
+    llm_api_key: str | None = None
 
     # --- Vector retrieval
     vector_service_url: str = "http://localhost:8000"

@@ -62,7 +62,7 @@ class Router:
 
         if self._formality is None or self._image_decision is None:
             raise RuntimeError(
-                "Image uploads require LOCAL_API_BASE and LOCAL_API_KEY to be configured."
+                "Image uploads require an LLM client (LLM_BASE_URL / LLM_API_KEY)."
             )
 
         if looks_like_image_question(question):

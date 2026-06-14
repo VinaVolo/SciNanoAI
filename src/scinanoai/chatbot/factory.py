@@ -8,7 +8,6 @@ from ..utils.paths import get_project_root
 from .core.history import HistoryStore
 from .core.router import Router
 from .llm.factory import get_client
-from .llm.ollama_client import OllamaChatClient
 from .service import ChatService
 from .services.decomposer import DecomposerAgent
 from .services.formality import FormalityAgent, ImageDecisionAgent
@@ -32,16 +31,12 @@ def build_chat_service(settings: ChatbotSettings | None = None) -> ChatService:
 
     primary_llm = get_client(settings)
 
-    local_llm = None
-    if settings.local_api_base and settings.local_api_key:
-        local_llm = OllamaChatClient(
-            model="gpt-oss:latest",
-            api_base=settings.local_api_base,
-            api_key=settings.local_api_key,
-        )
+    # Auxiliary judge / reformulate / formality steps reuse the same gateway client —
+    # one provider for the whole bot.
+    local_llm = primary_llm
 
-    formality_agent = FormalityAgent(local_llm) if local_llm else None
-    image_decision_agent = ImageDecisionAgent(local_llm) if local_llm else None
+    formality_agent = FormalityAgent(local_llm)
+    image_decision_agent = ImageDecisionAgent(local_llm)
 
     decomposer = DecomposerAgent(threshold=0.2)
     router = Router(

@@ -52,10 +52,7 @@ src/scinanoai/
 │   ├── llm/
 │   │   ├── base.py         # LLMClient Protocol
 │   │   ├── factory.py      # get_client(settings)
-│   │   ├── openai_client.py
-│   │   ├── ollama_client.py
-│   │   ├── yandex_client.py
-│   │   └── gigachat_client.py
+│   │   └── openai_client.py  # OpenAI-compatible gateway client
 │   └── services/
 │       ├── vector_client.py     # httpx + tenacity retry
 │       ├── decomposer.py        # zero-shot classifier (mDeBERTa)
