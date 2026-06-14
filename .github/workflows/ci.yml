@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main, dev, dev_ENG]
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python (per .python-version)
+        run: uv python install
+
+      - name: Install project (dev + chatbot + vector extras)
+        run: uv sync --frozen --extra dev --extra chatbot --extra vector
+
+      - name: Ruff (lint + format check)
+        run: |
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+
+      - name: Pytest (unit only — integration tests need ML models / FAISS index)
+        env:
+          SCINANO_LOG_LEVEL: WARNING
+        run: uv run pytest -m unit --cov=scinanoai --cov-report=xml
+
+      - name: Upload coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: ignore
+
+  gitleaks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
