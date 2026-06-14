@@ -1,96 +1,144 @@
-"""Gradio frontend for the chatbot service."""
+"""Gradio frontend for the chatbot service.
+
+Layout + event wiring only. Network access lives in :mod:`ui_api` and all copy /
+styling lives in :mod:`ui_theme`.
+"""
 
 from __future__ import annotations
 
-import base64
-import os
+from collections.abc import Iterator
 from typing import Any
+from uuid import uuid4
 
 import gradio as gr
-import httpx
 
 from ..utils.logging import setup_logging
 from .settings import ChatbotSettings
+from .ui_api import ChatApiClient, ChatApiError
+from .ui_theme import (
+    CHATBOT_PLACEHOLDER,
+    CUSTOM_CSS,
+    FORCE_DARK_JS,
+    LATEX_DELIMITERS,
+    PLACEHOLDER,
+    SUBTITLE,
+    TITLE,
+    build_theme,
+    status_html,
+)
 
 _LOG = setup_logging("scinanoai.ui")
 
-
-def _encode_images(image_files: list[Any] | None) -> list[dict[str, str]]:
-    encoded: list[dict[str, str]] = []
-    for idx, file_obj in enumerate(image_files or [], start=1):
-        path = None
-        if isinstance(file_obj, dict):
-            path = file_obj.get("name") or file_obj.get("path")
-        else:
-            path = getattr(file_obj, "name", None) or getattr(file_obj, "path", None)
-        if path is None:
-            continue
-        try:
-            with open(path, "rb") as fh:
-                encoded.append(
-                    {
-                        "data": base64.b64encode(fh.read()).decode("utf-8"),
-                        "name": os.path.basename(path) or f"image_{idx}.png",
-                    }
-                )
-        except OSError as exc:
-            _LOG.error("Failed to read image %s: %s", path, exc)
-    return encoded
+# Cleared value for the multimodal input after a successful submit.
+_EMPTY_INPUT: dict[str, Any] = {"text": "", "files": []}
+# Backend requires a non-empty message; supply one when only images are attached.
+_IMAGE_ONLY_PROMPT = "Проанализируй приложенные изображения."
+_PENDING_TITLE = "Обрабатываю запрос…"
+_PENDING_BODY = "Идёт поиск по базе знаний и генерация ответа. Это может занять до минуты."
 
 
-def build_app(chat_api_url: str | None = None) -> gr.Blocks:
-    chat_api = chat_api_url or os.getenv("CHAT_API_URL", "http://localhost:8001")
+def _pending_message() -> dict[str, Any]:
+    """An assistant placeholder that renders Gradio's animated 'pending' spinner."""
+    return {
+        "role": "assistant",
+        "content": _PENDING_BODY,
+        "metadata": {"title": _PENDING_TITLE, "status": "pending"},
+    }
 
-    def _chat(user_input: str, history: list | None, image_files: list[Any] | None):
-        history = history or []
-        try:
-            payload = {"message": user_input, "images": _encode_images(image_files)}
-            with httpx.Client(timeout=120.0) as client:
-                response = client.post(f"{chat_api}/chat", json=payload)
-            if response.status_code == 200:
-                data = response.json()
-                history.append({"role": "user", "content": user_input})
-                history.append({"role": "assistant", "content": data["reply"]})
-            else:
-                history.append({"role": "user", "content": user_input})
-                history.append(
-                    {"role": "assistant", "content": f"Error in the chatbot: {response.text}"}
-                )
-        except httpx.HTTPError as exc:
-            history.append({"role": "user", "content": user_input})
-            history.append({"role": "assistant", "content": f"Error connecting: {exc}"})
-        return "", history, None
 
-    def _clear():
-        try:
-            with httpx.Client(timeout=30.0) as client:
-                response = client.post(f"{chat_api}/clear_history")
-            if response.status_code == 200:
-                return [], None
-            return [{"role": "assistant", "content": f"API error: {response.text}"}], None
-        except httpx.HTTPError as exc:
-            return [{"role": "assistant", "content": f"Connection error: {exc}"}], None
+def _user_turn(text: str, files: list[Any]) -> list[dict[str, Any]]:
+    """Build the chat-history entries for a user turn (images, then text)."""
+    turn: list[dict[str, Any]] = [
+        {"role": "user", "content": {"path": path}} for path in files
+    ]
+    if text:
+        turn.append({"role": "user", "content": text})
+    return turn
 
-    with gr.Blocks() as demo:
-        gr.Markdown("# 🤖 Welcome to SciNanoAI ChatBot!")
-        gr.Markdown(
-            "RAG-based chatbot over the SciNanoAI knowledge base. "
-            "Ask a question or attach images for analysis."
+
+def build_app(chat_api_url: str | None = None, root_path: str = "") -> gr.Blocks:
+    client = ChatApiClient(chat_api_url)
+    logout_url = f"{root_path}/logout" if root_path else "/logout"
+
+    def _render_header(online: bool) -> str:
+        return (
+            "<div class='app-header'>"
+            f"<div class='brand'><span class='title'>{TITLE}</span>"
+            f"<span class='subtitle'>{SUBTITLE}</span></div>"
+            "<div class='actions'>"
+            f"{status_html(online)}"
+            f"<a class='logout-link' href='{logout_url}'>⏏ Выйти</a>"
+            "</div></div>"
         )
 
-        chatbot_widget = gr.Chatbot(type="messages")
-        message_input = gr.Textbox(placeholder="Enter your question here...")
-        image_input = gr.File(label="Upload images", file_types=["image"], file_count="multiple")
-        submit_button = gr.Button("Send")
-        clear_button = gr.Button("Clear the chat")
+    def _on_load() -> tuple[str, str]:
+        """Mint a fresh per-session id and probe backend health on page load."""
+        return str(uuid4()), _render_header(client.health())
 
-        for trigger in (message_input.submit, submit_button.click):
-            trigger(
-                _chat,
-                inputs=[message_input, chatbot_widget, image_input],
-                outputs=[message_input, chatbot_widget, image_input],
+    def _respond(
+        message: dict[str, Any], history: list[dict[str, Any]], session_id: str
+    ) -> Iterator[tuple[dict[str, Any], list[dict[str, Any]]]]:
+        text = (message.get("text") or "").strip()
+        files = message.get("files") or []
+        if not text and not files:
+            gr.Warning("Введите вопрос или приложите изображение.")
+            yield message, history
+            return
+
+        history = history + _user_turn(text, files)
+        history.append(_pending_message())
+        yield _EMPTY_INPUT, history  # immediate feedback before the blocking call
+
+        try:
+            reply = client.send(text or _IMAGE_ONLY_PROMPT, files, session_id)
+            history[-1] = {"role": "assistant", "content": reply}
+        except ChatApiError as exc:
+            gr.Warning(str(exc))
+            history[-1] = {"role": "assistant", "content": f"⚠ {exc}"}
+        yield _EMPTY_INPUT, history
+
+    def _clear(session_id: str) -> list[dict[str, Any]]:
+        try:
+            client.clear(session_id)
+            gr.Info("История диалога очищена.")
+        except ChatApiError as exc:
+            gr.Warning(str(exc))
+        return []
+
+    # Gradio 6 moved theme/css/js from the Blocks constructor to launch(); they are
+    # applied in main(). build_app() only assembles the layout.
+    demo = gr.Blocks(title="SciNanoAI", fill_height=True)
+    with demo:
+        session_state = gr.State("")
+        header = gr.HTML(_render_header(False))
+
+        chatbot = gr.Chatbot(
+            height=560,
+            render_markdown=True,
+            latex_delimiters=LATEX_DELIMITERS,
+            show_label=False,
+            placeholder=CHATBOT_PLACEHOLDER,
+        )
+        message_input = gr.MultimodalTextbox(
+            placeholder=PLACEHOLDER,
+            file_types=["image"],
+            file_count="multiple",
+            sources=["upload"],
+            show_label=False,
+            autofocus=True,
+        )
+        with gr.Row():
+            new_chat = gr.Button(
+                "🗑 Новый диалог", variant="secondary", size="sm", scale=0
             )
-        clear_button.click(_clear, outputs=[chatbot_widget, image_input])
+
+        message_input.submit(
+            _respond,
+            inputs=[message_input, chatbot, session_state],
+            outputs=[message_input, chatbot],
+        )
+        new_chat.click(_clear, inputs=[session_state], outputs=[chatbot])
+        demo.load(_on_load, outputs=[session_state, header])
 
     return demo
 
@@ -101,10 +149,14 @@ def main() -> None:
         raise RuntimeError(
             "Missing GRADIO_USERNAME / GRADIO_PASSWORD. Populate .env (see .env.example)."
         )
-    demo = build_app()
+    demo = build_app(root_path=settings.gradio_root_path)
+    demo.queue()
     demo.launch(
+        theme=build_theme(),
+        css=CUSTOM_CSS,
+        js=FORCE_DARK_JS,
         auth=(settings.gradio_username, settings.gradio_password),
-        auth_message="Enter your username and password",
+        auth_message="Введите логин и пароль",
         server_port=settings.gradio_port,
         server_name="0.0.0.0",
         root_path=settings.gradio_root_path,
