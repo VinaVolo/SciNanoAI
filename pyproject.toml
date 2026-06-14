@@ -79,6 +79,14 @@ data = [
     "tenacity>=9.0",
 ]
 
+# --- PyTorch build selector (mutually exclusive — pick exactly one at sync time)
+# Routes torch/torchvision to the CPU-only or CUDA wheel index via
+# [tool.uv.sources] below. Default everywhere is `cpu`; opt into `gpu` by
+# setting TORCH_VARIANT=gpu before building. Without one of these extras,
+# torch would fall back to the default PyPI wheel (full CUDA stack, ~4 GB).
+cpu = ["torch>=2.5", "torchvision>=0.20"]
+gpu = ["torch>=2.5", "torchvision>=0.20"]
+
 # --- Developer tooling
 dev = [
     "pytest>=8.3",
@@ -101,6 +109,35 @@ scinanoai-s3 = "scinanoai.storage.cli:main"
 packages = ["src/scinanoai"]
 
 # -----------------------------------------------------------------------------
+# uv — PyTorch CPU/GPU index routing
+# -----------------------------------------------------------------------------
+# The `cpu` and `gpu` extras are mutually exclusive: a single uv.lock holds
+# both resolutions, and `uv sync --extra <cpu|gpu>` selects one. CPU pulls the
+# slim CPU-only wheels (~200 MB); GPU pulls the CUDA 13 stack (~4 GB).
+[tool.uv]
+conflicts = [[{ extra = "cpu" }, { extra = "gpu" }]]
+
+[tool.uv.sources]
+torch = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-gpu", extra = "gpu" },
+]
+torchvision = [
+    { index = "pytorch-cpu", extra = "cpu" },
+    { index = "pytorch-gpu", extra = "gpu" },
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[[tool.uv.index]]
+name = "pytorch-gpu"
+url = "https://download.pytorch.org/whl/cu130"
+explicit = true
+
+# -----------------------------------------------------------------------------
 # Tooling
 # -----------------------------------------------------------------------------
 
@@ -120,7 +157,8 @@ ignore = [
     "E501",     # line length — handled by formatter
     "B008",     # function call in default (FastAPI Depends)
     "UP045",    # PEP 604 unions in older 3.10 syntax (we target 3.11+)
-    "RUF002",   # ambiguous Cyrillic — prompt strings are Russian on purpose
+    "RUF001",   # ambiguous Cyrillic — prompt + UI strings are Russian on purpose
+    "RUF002",
     "RUF003",
     "TID252",   # relative parent imports within the package are fine
 ]

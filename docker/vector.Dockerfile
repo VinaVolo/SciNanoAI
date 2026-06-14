@@ -5,6 +5,10 @@
 # restricted networks.
 FROM ghcr.io/astral-sh/uv:python3.11-bookworm-slim AS builder
 
+# Selects the torch wheel index: `cpu` (default, ~200 MB) or `gpu` (CUDA 13,
+# ~4 GB). Wired from TORCH_VARIANT in docker-compose.yml / .env.
+ARG TORCH_VARIANT=cpu
+
 ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
@@ -14,14 +18,14 @@ WORKDIR /app
 
 COPY pyproject.toml uv.lock ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev --extra vector
+    uv sync --frozen --no-install-project --no-dev --extra vector --extra "${TORCH_VARIANT}"
 
 COPY src ./src
 # pyproject.toml declares `license = { file = "LICENSE" }` and
 # `readme = "README.md"`; hatchling validates both at build time.
 COPY LICENSE README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --extra vector
+    uv sync --frozen --no-dev --extra vector --extra "${TORCH_VARIANT}"
 
 # ------------------------- runtime ------------------------------------------
 FROM python:3.11-slim AS runtime

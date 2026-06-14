@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: docker/vector.Dockerfile
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
     container_name: scinanoai-vector
     ports:
       - "8000:8000"
@@ -37,6 +39,8 @@ services:
     build:
       context: .
       dockerfile: docker/chatbot.Dockerfile
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
     container_name: scinanoai-chatbot
     ports:
       - "8001:8001"
@@ -74,6 +78,8 @@ services:
     build:
       context: .
       dockerfile: docker/chatbot.Dockerfile
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
     container_name: scinanoai-ui
     command: ["python", "-m", "scinanoai.chatbot.ui"]
     ports:
@@ -82,9 +88,16 @@ services:
       - .env
     environment:
       - CHAT_API_URL=http://chatbot_api:8001
+      - GRADIO_ANALYTICS_ENABLED=False
     depends_on:
       chatbot_api:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import httpx,sys; sys.exit(0 if httpx.get('http://127.0.0.1:8517/', timeout=3.0).status_code == 200 else 1)"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     restart: unless-stopped
     networks:
       - scinanoai_net

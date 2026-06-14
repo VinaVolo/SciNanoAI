@@ -23,6 +23,10 @@ services:
   vector_service:
     build:
       target: builder
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    environment:
+      - TORCH_VARIANT=${TORCH_VARIANT:-cpu}
     volumes:
       - ./src:/app/src
       - ./pyproject.toml:/app/pyproject.toml:ro
@@ -32,7 +36,7 @@ services:
       - sh
       - -c
       - >
-        uv sync --frozen --extra vector &&
+        uv sync --frozen --extra vector --extra "${TORCH_VARIANT:-cpu}" &&
         exec uv run uvicorn scinanoai.vector_service.api:app
         --host 0.0.0.0 --port 8000 --reload --reload-dir /app/src
     healthcheck:
@@ -41,6 +45,10 @@ services:
   chatbot_api:
     build:
       target: builder
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    environment:
+      - TORCH_VARIANT=${TORCH_VARIANT:-cpu}
     volumes:
       - ./src:/app/src
       - ./pyproject.toml:/app/pyproject.toml:ro
@@ -56,7 +64,7 @@ services:
       - sh
       - -c
       - >
-        uv sync --frozen --extra chatbot &&
+        uv sync --frozen --extra chatbot --extra "${TORCH_VARIANT:-cpu}" &&
         exec uv run uvicorn scinanoai.chatbot.api:app
         --host 0.0.0.0 --port 8001 --reload --reload-dir /app/src
     healthcheck:
@@ -65,6 +73,10 @@ services:
   chatbot_ui:
     build:
       target: builder
+      args:
+        TORCH_VARIANT: ${TORCH_VARIANT:-cpu}
+    environment:
+      - TORCH_VARIANT=${TORCH_VARIANT:-cpu}
     volumes:
       - ./src:/app/src
       - ./pyproject.toml:/app/pyproject.toml:ro
@@ -77,7 +89,7 @@ services:
       - sh
       - -c
       - >
-        uv sync --frozen --extra chatbot &&
+        uv sync --frozen --extra chatbot --extra "${TORCH_VARIANT:-cpu}" &&
         exec uv run python -m scinanoai.chatbot.ui
 
 volumes:
