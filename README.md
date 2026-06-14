@@ -16,6 +16,10 @@
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg"></a>
 </p>
 
+<p align="center">
+  <img alt="SciNanoAI pipeline: scientific articles, patents and reviews are tagged (shapes, materials, sizes, cell type/properties), passed through an LLM, and resolved into structured nano-object descriptors (shapes, objects, materials, sizes)." src="docs/img/fig0.png" width="100%">
+</p>
+
 > The original RAG platform is described in **Krotkov *et&nbsp;al.*, *J. Chem. Inf. Model.* 2025**
 > ([doi:10.1021/acs.jcim.5c01897](https://doi.org/10.1021/acs.jcim.5c01897)).
 > The Cellpose-based image-analysis extension shipped on this branch is the subject
@@ -33,7 +37,7 @@ SciNanoAI bundles three cooperating services:
 | `chatbot_api`    | 8001 | `scinanoai.chatbot.api:app`              | RAG orchestration, LLM dispatch, Cellpose images |
 | `chatbot_ui`     | 8517 | `python -m scinanoai.chatbot.ui`         | Gradio frontend with basic auth                  |
 
-LLM providers (selectable via `LLM_MODEL`): OpenAI-compatible, YandexGPT, GigaChat (Sber), Ollama / `gpt-oss:latest`.
+LLM access runs through one OpenAI-compatible gateway (LiteLLM / OpenRouter / vLLM) set via `LLM_BASE_URL`; the gateway resolves `LLM_MODEL` to its real upstream (OpenRouter, YandexGPT, GigaChat, Ollama, ...).
 
 ## Quick start (Docker)
 
@@ -42,7 +46,7 @@ git clone git@github.com:VinaVolo/SciNanoAI.git
 cd SciNanoAI
 
 cp .env.example .env
-# Fill in: LLM_MODEL, the matching API_KEY/_BASE pair, S3 keys, GRADIO_USERNAME/PASSWORD
+# Fill in: LLM_MODEL, LLM_BASE_URL, LLM_API_KEY, S3 keys, GRADIO_USERNAME/PASSWORD
 
 docker compose up --build
 ```
