@@ -177,3 +177,6 @@ cython_debug/
 *.zip
 chatbot_app/.gradio/
 /models
+
+# macOS
+.DS_Store
