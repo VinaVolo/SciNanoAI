@@ -11,9 +11,6 @@ RAG_ANSWER_PROMPT = dedent(
     Context:
     {context}
 
-    Begin with a concise checklist (3-7 bullets) of what you will do; keep items conceptual,
-    not implementation-level.
-
     Based on this information, provide a clear, coherent, and professional answer to the
     following question:
 
