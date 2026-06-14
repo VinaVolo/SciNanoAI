@@ -61,9 +61,7 @@ class Router:
             return RouteDecision(use_database=use_database, image_mode=ImageMode.NO_IMAGES)
 
         if self._formality is None or self._image_decision is None:
-            raise RuntimeError(
-                "Image uploads require an LLM client (LLM_BASE_URL / LLM_API_KEY)."
-            )
+            raise RuntimeError("Image uploads require an LLM client (LLM_BASE_URL / LLM_API_KEY).")
 
         if looks_like_image_question(question):
             return RouteDecision(use_database=False, image_mode=ImageMode.IMAGE_ANALYSIS)

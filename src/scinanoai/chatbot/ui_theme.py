@@ -15,8 +15,7 @@ SUBTITLE = "Научный ассистент по базе знаний о на
 PLACEHOLDER = "Задайте вопрос или приложите изображение для анализа…"
 # Empty-state shown inside the chat panel before the first message.
 CHATBOT_PLACEHOLDER = (
-    "### 🔬 Чем помочь?\n"
-    "Спросите про наноструктуры или приложите изображение для анализа."
+    "### 🔬 Чем помочь?\nСпросите про наноструктуры или приложите изображение для анализа."
 )
 
 # Inline + block math, so scientific answers render formulas correctly.
@@ -42,14 +41,8 @@ FORCE_DARK_JS = """
 def status_html(online: bool) -> str:
     """Render the connection-status badge shown in the header."""
     if online:
-        return (
-            "<span class='status-badge online'>"
-            "<span class='dot'></span>сервис на связи</span>"
-        )
-    return (
-        "<span class='status-badge offline'>"
-        "<span class='dot'></span>сервис недоступен</span>"
-    )
+        return "<span class='status-badge online'><span class='dot'></span>сервис на связи</span>"
+    return "<span class='status-badge offline'><span class='dot'></span>сервис недоступен</span>"
 
 
 def build_theme() -> gr.Theme:

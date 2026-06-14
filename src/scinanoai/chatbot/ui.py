@@ -48,9 +48,7 @@ def _pending_message() -> dict[str, Any]:
 
 def _user_turn(text: str, files: list[Any]) -> list[dict[str, Any]]:
     """Build the chat-history entries for a user turn (images, then text)."""
-    turn: list[dict[str, Any]] = [
-        {"role": "user", "content": {"path": path}} for path in files
-    ]
+    turn: list[dict[str, Any]] = [{"role": "user", "content": {"path": path}} for path in files]
     if text:
         turn.append({"role": "user", "content": text})
     return turn
@@ -128,9 +126,7 @@ def build_app(chat_api_url: str | None = None, root_path: str = "") -> gr.Blocks
             autofocus=True,
         )
         with gr.Row():
-            new_chat = gr.Button(
-                "🗑 Новый диалог", variant="secondary", size="sm", scale=0
-            )
+            new_chat = gr.Button("🗑 Новый диалог", variant="secondary", size="sm", scale=0)
 
         message_input.submit(
             _respond,

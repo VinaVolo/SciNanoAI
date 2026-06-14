@@ -117,9 +117,7 @@ class ChatApiClient:
 
         if response.status_code != 200:
             _LOG.error("Clear history API error %s: %s", response.status_code, response.text)
-            raise ChatApiError(
-                f"Не удалось очистить историю ({response.status_code})."
-            )
+            raise ChatApiError(f"Не удалось очистить историю ({response.status_code}).")
 
     def health(self) -> bool:
         """Return ``True`` when the chatbot API answers ``/health`` with 200."""

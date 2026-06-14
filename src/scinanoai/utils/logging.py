@@ -79,14 +79,14 @@ def setup_logging(
         import huggingface_hub.utils.logging as hf_logging
 
         hf_logging.set_verbosity_info()
-    except Exception:  # noqa: BLE001 — optional, best effort
+    except Exception:  # optional, best effort
         pass
     try:
         import transformers
 
         transformers.logging.set_verbosity_info()
         transformers.logging.enable_progress_bar()
-    except Exception:  # noqa: BLE001
+    except Exception:  # optional, best effort
         pass
 
     return logger
